@@ -97,6 +97,23 @@ class Options {
 			'mes_nav_settings'       => array(
 				'legacy_mega_menu' => false,
 			),
+			'mes_performance_settings' => array(
+				'disable_emojis' => true,
+				'disable_embeds' => false,
+			),
+			'mes_security_settings'    => array(
+				'hide_versions'  => true,
+				'disable_xmlrpc' => true,
+				'logging'        => false,
+			),
+			'mes_stats_settings'       => array(
+				'customers'    => '',
+				'jobs'         => '',
+				'rating'       => '',
+				'years'        => '',
+				'technicians'  => '',
+				'satisfaction' => '',
+			),
 		);
 	}
 
@@ -119,13 +136,14 @@ class Options {
 	 * @return mixed
 	 */
 	public static function get( string $key, $default = array() ) {
-		$value = get_option( $key, null );
+		$value    = get_option( $key, null );
+		$defaults = self::defaults();
+		$base     = $defaults[ $key ] ?? $default;
 		if ( null === $value ) {
-			$defaults = self::defaults();
-			return $defaults[ $key ] ?? $default;
+			return $base;
 		}
-		if ( is_array( $default ) && is_array( $value ) ) {
-			return wp_parse_args( $value, $default );
+		if ( is_array( $base ) && is_array( $value ) ) {
+			return array_replace_recursive( $base, $value );
 		}
 		return $value;
 	}
@@ -163,5 +181,41 @@ class Options {
 			),
 			array( '%s', '%s', '%s', '%d' )
 		);
+	}
+
+	/**
+	 * Recent revisions.
+	 *
+	 * @param int $limit Limit.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function revisions( int $limit = 20 ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'mes_revisions';
+		return (array) $wpdb->get_results(
+			$wpdb->prepare( "SELECT id, option_group, created_at, user_id FROM {$table} ORDER BY id DESC LIMIT %d", max( 1, min( 100, $limit ) ) ),
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * Restore a revision by id.
+	 *
+	 * @param int $id Revision ID.
+	 */
+	public static function restore_revision( int $id ): bool {
+		global $wpdb;
+		$row = $wpdb->get_row(
+			$wpdb->prepare( 'SELECT * FROM ' . $wpdb->prefix . 'mes_revisions WHERE id = %d', $id ),
+			ARRAY_A
+		);
+		if ( ! $row ) {
+			return false;
+		}
+		$payload = json_decode( (string) $row['payload'], true );
+		if ( ! is_array( $payload ) ) {
+			return false;
+		}
+		return self::update( (string) $row['option_group'], $payload );
 	}
 }

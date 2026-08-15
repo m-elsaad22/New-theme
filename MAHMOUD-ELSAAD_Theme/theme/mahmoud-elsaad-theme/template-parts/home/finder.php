@@ -17,7 +17,7 @@
 				<div class="sel"><i class="fas fa-screwdriver-wrench"></i>
 					<select id="fnSvc" aria-label="<?php esc_attr_e( 'Service', 'mahmoud-elsaad' ); ?>">
 						<?php foreach ( get_posts( array( 'post_type' => 'service', 'posts_per_page' => 50 ) ) as $svc ) : ?>
-							<option value="<?php echo esc_attr( get_the_title( $svc ) ); ?>" data-id="<?php echo esc_attr( (string) $svc->ID ); ?>"><?php echo esc_html( get_the_title( $svc ) ); ?></option>
+							<option value="<?php echo esc_attr( $svc->post_name ); ?>" data-id="<?php echo esc_attr( (string) $svc->ID ); ?>" data-slug="<?php echo esc_attr( $svc->post_name ); ?>"><?php echo esc_html( get_the_title( $svc ) ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</div>
@@ -27,7 +27,7 @@
 				<div class="sel"><i class="fas fa-location-dot"></i>
 					<select id="fnCity" aria-label="<?php esc_attr_e( 'City', 'mahmoud-elsaad' ); ?>">
 						<?php foreach ( get_posts( array( 'post_type' => 'mes_city', 'posts_per_page' => 50 ) ) as $city ) : ?>
-							<option value="<?php echo esc_attr( get_the_title( $city ) ); ?>"><?php echo esc_html( get_the_title( $city ) ); ?></option>
+							<option value="<?php echo esc_attr( $city->post_name ); ?>" data-slug="<?php echo esc_attr( $city->post_name ); ?>" data-time="<?php echo esc_attr( (string) get_post_meta( $city->ID, '_mes_response_time', true ) ); ?>"><?php echo esc_html( get_the_title( $city ) ); ?></option>
 						<?php endforeach; ?>
 					</select>
 				</div>

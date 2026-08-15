@@ -58,3 +58,36 @@ function mes_brand_tagline(): string {
 function mes_get_option( string $key, $default = array() ) {
 	return \MahmoudElsaad\Core\Support\Options::get( $key, $default );
 }
+
+/**
+ * Whether the core plugin is active.
+ */
+function mes_core_ready(): bool {
+	return true;
+}
+
+/**
+ * Render a form by type.
+ *
+ * @param string               $type Type.
+ * @param array<string, mixed> $args Args.
+ */
+function mes_render_form( string $type, array $args = array() ): string {
+	if ( class_exists( '\\MahmoudElsaad\\Core\\Forms\\Engine' ) ) {
+		return \MahmoudElsaad\Core\Forms\Engine::render( $type, $args );
+	}
+	return '';
+}
+
+/**
+ * Language-prefixed URL.
+ *
+ * @param string      $path Path.
+ * @param string|null $lang Language.
+ */
+function mes_language_url( string $path = '', ?string $lang = null ): string {
+	if ( class_exists( '\\MahmoudElsaad\\Core\\Localization\\Language' ) ) {
+		return \MahmoudElsaad\Core\Localization\Language::url( $path, $lang );
+	}
+	return home_url( '/' . ltrim( $path, '/' ) );
+}

@@ -19,6 +19,7 @@ class Engine {
 		add_action( 'init', array( __CLASS__, 'maybe_seed_forms' ), 30 );
 		add_action( 'admin_post_nopriv_mes_submit_form', array( __CLASS__, 'handle' ) );
 		add_action( 'admin_post_mes_submit_form', array( __CLASS__, 'handle' ) );
+		add_shortcode( 'mes_form', array( __CLASS__, 'shortcode' ) );
 	}
 
 	/**
@@ -240,5 +241,15 @@ class Engine {
 			)
 		);
 		return $posts[0] ?? null;
+	}
+
+	/**
+	 * Shortcode [mes_form type="contact"].
+	 *
+	 * @param array<string, string>|string $atts Attributes.
+	 */
+	public static function shortcode( $atts ): string {
+		$atts = shortcode_atts( array( 'type' => 'contact' ), (array) $atts, 'mes_form' );
+		return self::render( sanitize_key( $atts['type'] ) );
 	}
 }

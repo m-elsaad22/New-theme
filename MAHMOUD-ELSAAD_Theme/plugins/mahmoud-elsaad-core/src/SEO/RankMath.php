@@ -7,6 +7,8 @@
 
 namespace MahmoudElsaad\Core\SEO;
 
+use MahmoudElsaad\Core\Support\Options;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -35,7 +37,7 @@ class RankMath {
 		if ( ! self::active() ) {
 			return $emit;
 		}
-		$settings = get_option( 'mes_seo_settings', array() );
+		$settings = Options::get( 'mes_seo_settings', array() );
 		if ( ! empty( $settings['defer_to_rank_math'] ) ) {
 			return false;
 		}

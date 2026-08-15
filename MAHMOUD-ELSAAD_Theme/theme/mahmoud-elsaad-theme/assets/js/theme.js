@@ -135,10 +135,35 @@
       const city = document.getElementById('fnCity');
       const res = document.getElementById('fnResult');
       if (!svc || !city || !res) return;
-      document.getElementById('frTitle').textContent = svc.value + ' — ' + city.value;
-      document.getElementById('frSub').textContent = city.value;
-      document.getElementById('frTime').textContent = '';
+      const svcOpt = svc.options[svc.selectedIndex];
+      const cityOpt = city.options[city.selectedIndex];
+      document.getElementById('frTitle').textContent = (svcOpt ? svcOpt.text : svc.value) + ' — ' + (cityOpt ? cityOpt.text : city.value);
+      document.getElementById('frSub').textContent = cityOpt ? cityOpt.text : city.value;
+      const time = document.getElementById('frTime');
+      if (time) time.textContent = cityOpt && cityOpt.dataset.time ? cityOpt.dataset.time : '';
       res.hidden = false;
+      const svcSlug = svcOpt && svcOpt.dataset.slug;
+      const citySlug = cityOpt && cityOpt.dataset.slug;
+      if (svcSlug && citySlug && window.mesFront) {
+        const base = (window.mesFront.home || '/').replace(/\/$/, '');
+        const lang = window.mesFront.lang || 'ar';
+        const url = base + '/' + lang + '/services/' + svcSlug + '/' + citySlug + '/';
+        let go = document.getElementById('frGo');
+        if (!go) {
+          go = document.createElement('a');
+          go.id = 'frGo';
+          go.className = 'btn btn-call';
+          res.appendChild(go);
+        }
+        go.href = url;
+        go.textContent = (svcOpt.text || '') + ' — ' + (cityOpt.text || '');
+      }
     });
   }
+
+  window.rvMove = function (dir) {
+    const track = document.getElementById('rvTrack');
+    if (!track) return;
+    track.scrollBy({ left: dir * -280, behavior: 'smooth' });
+  };
 })();

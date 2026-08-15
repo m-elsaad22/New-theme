@@ -58,8 +58,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<div class="lang-item">
 		<span class="ll"><i class="fas fa-earth-americas"></i> <?php esc_html_e( 'Language', 'mahmoud-elsaad' ); ?></span>
 		<select onchange="if(this.value) location.href=this.value" aria-label="<?php esc_attr_e( 'Language', 'mahmoud-elsaad' ); ?>">
-			<option value="<?php echo esc_url( home_url( '/ar/' ) ); ?>"><?php esc_html_e( 'Arabic', 'mahmoud-elsaad' ); ?></option>
-			<option value="<?php echo esc_url( home_url( '/en/' ) ); ?>"><?php esc_html_e( 'English', 'mahmoud-elsaad' ); ?></option>
+			<option value="<?php echo esc_url( function_exists( 'mes_language_url' ) ? mes_language_url( '', 'ar' ) : home_url( '/ar/' ) ); ?>" <?php selected( function_exists( 'mes_html_lang' ) ? mes_html_lang() : 'ar', 'ar' ); ?>><?php esc_html_e( 'Arabic', 'mahmoud-elsaad' ); ?></option>
+			<option value="<?php echo esc_url( function_exists( 'mes_language_url' ) ? mes_language_url( '', 'en' ) : home_url( '/en/' ) ); ?>" <?php selected( function_exists( 'mes_html_lang' ) ? mes_html_lang() : 'ar', 'en' ); ?>><?php esc_html_e( 'English', 'mahmoud-elsaad' ); ?></option>
 		</select>
 	</div>
 	<?php

@@ -8,6 +8,7 @@
 namespace MahmoudElsaad\Core;
 
 use MahmoudElsaad\Core\Admin\ControlCenter;
+use MahmoudElsaad\Core\Admin\Metaboxes;
 use MahmoudElsaad\Core\AI\Manager as AIManager;
 use MahmoudElsaad\Core\API\Rest;
 use MahmoudElsaad\Core\Content\Registrar as ContentRegistrar;
@@ -16,8 +17,10 @@ use MahmoudElsaad\Core\Forms\Engine as FormEngine;
 use MahmoudElsaad\Core\Helpers\Contact;
 use MahmoudElsaad\Core\LegacyMigration\Migrator;
 use MahmoudElsaad\Core\Localization\Language;
+use MahmoudElsaad\Core\Performance\Front as PerformanceFront;
 use MahmoudElsaad\Core\Relations\ServiceCity;
 use MahmoudElsaad\Core\Routing\Rewrites;
+use MahmoudElsaad\Core\Security\Hardening;
 use MahmoudElsaad\Core\SEO\Meta;
 use MahmoudElsaad\Core\SEO\RankMath;
 use MahmoudElsaad\Core\SEO\SchemaGraph;
@@ -66,7 +69,10 @@ class Plugin {
 		AIManager::init();
 		Rest::init();
 		ControlCenter::init();
+		Metaboxes::init();
 		Migrator::init();
+		PerformanceFront::init();
+		Hardening::init();
 
 		add_filter( 'mes_core_ready', '__return_true' );
 		do_action( 'mes_core_booted', $this );

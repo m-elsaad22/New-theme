@@ -33,6 +33,10 @@ $map = array(
 	'blog'         => 'template-parts/home/blog',
 	'faq'          => 'template-parts/home/faq',
 	'cta'          => 'template-parts/home/cta',
+	'case_studies' => 'template-parts/home/case-studies',
+	'certs'        => 'template-parts/home/certs',
+	'pricing'      => 'template-parts/home/pricing',
+	'knowledge'    => 'template-parts/home/knowledge',
 );
 
 foreach ( $sections as $key => $cfg ) {

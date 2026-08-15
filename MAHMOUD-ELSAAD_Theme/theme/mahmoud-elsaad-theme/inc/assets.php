@@ -47,9 +47,12 @@ add_action(
 			'mesFront',
 			array(
 				'root'  => esc_url_raw( rest_url( 'mes/v1/' ) ),
+				'ajax'  => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 				'nonce' => wp_create_nonce( 'mes_track_click' ),
 				'post'  => get_queried_object_id(),
-				'type'  => get_post_type() ?: 'home',
+				'type'  => get_post_type() ?: ( is_front_page() ? 'home' : 'page' ),
+				'home'  => esc_url_raw( home_url( '/' ) ),
+				'lang'  => function_exists( 'mes_html_lang' ) ? mes_html_lang() : 'ar',
 			)
 		);
 	}

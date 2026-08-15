@@ -309,9 +309,10 @@ The following gates are directional. They must be expanded with executable accep
 
 ## Implementation gate (this package)
 
-- PHP syntax: pass (`php -l` on 80 files, 0 errors).
+- PHP syntax: pass (`php -l` on plugin/theme PHP).
 - Runtime YourColor branding in `theme/` and `plugins/`: 0 hits.
 - Packages present: `plugins/mahmoud-elsaad-core`, `theme/mahmoud-elsaad-theme`.
+- Control Center views, tracking JSON/Ajax, language prefix strip, UAE+GCC cities seed, homepage sections (certs/pricing/knowledge/case studies), service×city override UI: implemented.
 - WordPress activation smoke test: not runnable here (no WP runtime). Activate on WordPress 6.6+ / PHP 8.2+.
 
 

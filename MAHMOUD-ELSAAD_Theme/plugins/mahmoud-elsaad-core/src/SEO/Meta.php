@@ -30,8 +30,15 @@ class Meta {
 		if ( RankMath::active() ) {
 			return $parts;
 		}
-		if ( get_query_var( 'mes_service_city' ) ) {
-			$parts['title'] = get_query_var( 'mes_service_slug' ) . ' — ' . get_query_var( 'mes_city_slug' );
+		if ( get_query_var( 'mes_service_city' ) && class_exists( '\\MahmoudElsaad\\Core\\Relations\\ServiceCity' ) ) {
+			$row = \MahmoudElsaad\Core\Relations\ServiceCity::resolve(
+				sanitize_title( (string) get_query_var( 'mes_service_slug' ) ),
+				sanitize_title( (string) get_query_var( 'mes_city_slug' ) )
+			);
+			if ( $row ) {
+				$landing        = \MahmoudElsaad\Core\Relations\ServiceCity::landing( $row );
+				$parts['title'] = $landing['seo_title'] ?: $landing['title'];
+			}
 		}
 		return $parts;
 	}
@@ -44,7 +51,16 @@ class Meta {
 			return;
 		}
 		$desc = '';
-		if ( is_singular() ) {
+		if ( get_query_var( 'mes_service_city' ) && class_exists( '\\MahmoudElsaad\\Core\\Relations\\ServiceCity' ) ) {
+			$row = \MahmoudElsaad\Core\Relations\ServiceCity::resolve(
+				sanitize_title( (string) get_query_var( 'mes_service_slug' ) ),
+				sanitize_title( (string) get_query_var( 'mes_city_slug' ) )
+			);
+			if ( $row ) {
+				$landing = \MahmoudElsaad\Core\Relations\ServiceCity::landing( $row );
+				$desc    = $landing['seo_desc'] ?: $landing['excerpt'];
+			}
+		} elseif ( is_singular() ) {
 			$desc = get_the_excerpt();
 		}
 		if ( $desc ) {

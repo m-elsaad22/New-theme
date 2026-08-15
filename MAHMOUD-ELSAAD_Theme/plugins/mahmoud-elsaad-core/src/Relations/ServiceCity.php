@@ -37,8 +37,8 @@ class ServiceCity {
 	 * @return array<string, mixed>|null
 	 */
 	public static function resolve( string $service_slug, string $city_slug ): ?array {
-		$service = get_page_by_path( $service_slug, OBJECT, 'service' );
-		$city    = get_page_by_path( $city_slug, OBJECT, 'mes_city' );
+		$service = self::by_slug( $service_slug, 'service' );
+		$city    = self::by_slug( $city_slug, 'mes_city' );
 		if ( ! $service || ! $city ) {
 			return null;
 		}
@@ -62,6 +62,10 @@ class ServiceCity {
 				'city_id'    => $city->ID,
 				'status'     => 'inherit',
 			);
+		}
+
+		if ( isset( $row['status'] ) && 'draft' === $row['status'] ) {
+			return null;
 		}
 
 		$row['service'] = $service;
@@ -105,6 +109,71 @@ class ServiceCity {
 	}
 
 	/**
+	 * Upsert an override row.
+	 *
+	 * @param array<string, mixed> $data Data.
+	 */
+	public static function upsert( array $data ): int {
+		global $wpdb;
+		$service_id = absint( $data['service_id'] ?? 0 );
+		$city_id    = absint( $data['city_id'] ?? 0 );
+		$lang       = sanitize_key( $data['language_code'] ?? Language::current() );
+		if ( ! $service_id || ! $city_id ) {
+			return 0;
+		}
+
+		$row = array(
+			'service_id'      => $service_id,
+			'city_id'         => $city_id,
+			'language_code'   => $lang,
+			'status'          => sanitize_key( $data['status'] ?? 'publish' ),
+			'title'           => sanitize_text_field( (string) ( $data['title'] ?? '' ) ),
+			'excerpt'         => sanitize_textarea_field( (string) ( $data['excerpt'] ?? '' ) ),
+			'content'         => wp_kses_post( (string) ( $data['content'] ?? '' ) ),
+			'faq'             => sanitize_textarea_field( (string) ( $data['faq'] ?? '' ) ),
+			'image_id'        => absint( $data['image_id'] ?? 0 ),
+			'phone'           => sanitize_text_field( (string) ( $data['phone'] ?? '' ) ),
+			'whatsapp'        => sanitize_text_field( (string) ( $data['whatsapp'] ?? '' ) ),
+			'seo_title'       => sanitize_text_field( (string) ( $data['seo_title'] ?? '' ) ),
+			'seo_description' => sanitize_textarea_field( (string) ( $data['seo_description'] ?? '' ) ),
+			'cta_label'       => sanitize_text_field( (string) ( $data['cta_label'] ?? '' ) ),
+			'updated_at'      => current_time( 'mysql', true ),
+		);
+
+		$existing = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT id FROM ' . self::table() . ' WHERE service_id = %d AND city_id = %d AND language_code = %s',
+				$service_id,
+				$city_id,
+				$lang
+			)
+		);
+
+		if ( $existing ) {
+			$wpdb->update( self::table(), $row, array( 'id' => (int) $existing ) );
+			return (int) $existing;
+		}
+
+		$wpdb->insert( self::table(), $row );
+		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * List overrides.
+	 *
+	 * @param int $limit Limit.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function list( int $limit = 100 ): array {
+		global $wpdb;
+		$limit = max( 1, min( 500, $limit ) );
+		return (array) $wpdb->get_results(
+			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' ORDER BY updated_at DESC LIMIT %d', $limit ),
+			ARRAY_A
+		);
+	}
+
+	/**
 	 * Cities attached to a service.
 	 *
 	 * @param int $service_id Service ID.
@@ -120,6 +189,45 @@ class ServiceCity {
 			)
 		);
 		return array_map( 'intval', $ids );
+	}
+
+	/**
+	 * Public landing URL.
+	 *
+	 * @param \WP_Post $service Service.
+	 * @param \WP_Post $city City.
+	 */
+	public static function url( \WP_Post $service, \WP_Post $city ): string {
+		return Language::url( 'services/' . $service->post_name . '/' . $city->post_name . '/' );
+	}
+
+	/**
+	 * Resolve a post by slug, preferring the current language.
+	 *
+	 * @param string $slug Slug.
+	 * @param string $type Type.
+	 */
+	private static function by_slug( string $slug, string $type ): ?\WP_Post {
+		$posts = get_posts(
+			array(
+				'name'           => $slug,
+				'post_type'      => $type,
+				'post_status'    => 'publish',
+				'posts_per_page' => 5,
+				'no_found_rows'  => true,
+			)
+		);
+		if ( ! $posts ) {
+			return null;
+		}
+		$lang = Language::current();
+		foreach ( $posts as $post ) {
+			$meta = (string) get_post_meta( $post->ID, '_mes_language', true );
+			if ( $meta === $lang || ( '' === $meta && $lang === Language::default_code() ) ) {
+				return $post;
+			}
+		}
+		return $posts[0];
 	}
 
 	/**

@@ -262,7 +262,7 @@ class Registrar {
 					array(
 						'type'              => 'string',
 						'single'            => true,
-						'show_in_rest'      => current_user_can( 'edit_posts' ),
+		'show_in_rest'      => true,
 						'auth_callback'     => static fn() => current_user_can( 'edit_posts' ),
 						'sanitize_callback' => 'sanitize_textarea_field',
 					)

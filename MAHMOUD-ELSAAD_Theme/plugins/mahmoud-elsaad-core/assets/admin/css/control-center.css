@@ -24,4 +24,12 @@
 }
 body.mes-cc-app #wpcontent { padding-left:0; padding-right:0; }
 body.mes-cc-app #wpbody-content { padding-bottom:0; }
-body.mes-cc-app #wpfooter, body.mes-cc-app #screen-meta, body.mes-cc-app .notice { display:none; }
+.mes-cc-form-wide { max-width: 720px; }
+.mes-cc-check { display:flex; align-items:center; gap:10px; }
+.mes-cc-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.mes-cc-list a { color:#fff; }
+.mes-cc-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.mes-cc-table { width:100%; border-collapse:collapse; margin-top:16px; }
+.mes-cc-table th, .mes-cc-table td { text-align:start; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
+.mes-cc-toast { color:#18C96A; margin:0; }
+.mes-cc textarea { padding:12px; border-radius:12px; border:1px solid #1E3A63; background:#0F2344; color:#fff; width:100%; }

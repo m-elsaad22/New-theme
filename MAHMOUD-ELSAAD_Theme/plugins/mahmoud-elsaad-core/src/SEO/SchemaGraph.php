@@ -82,6 +82,22 @@ class SchemaGraph {
 				'provider'    => array( '@id' => home_url( '/#organization' ) ),
 			);
 		}
+		if ( get_query_var( 'mes_service_city' ) && class_exists( '\\MahmoudElsaad\\Core\\Relations\\ServiceCity' ) ) {
+			$row = \MahmoudElsaad\Core\Relations\ServiceCity::resolve(
+				sanitize_title( (string) get_query_var( 'mes_service_slug' ) ),
+				sanitize_title( (string) get_query_var( 'mes_city_slug' ) )
+			);
+			if ( $row ) {
+				$landing = \MahmoudElsaad\Core\Relations\ServiceCity::landing( $row );
+				$graph[] = array(
+					'@type'       => 'Service',
+					'name'        => $landing['title'],
+					'description' => wp_strip_all_tags( $landing['excerpt'] ),
+					'areaServed'  => get_the_title( $landing['city'] ),
+					'provider'    => array( '@id' => home_url( '/#organization' ) ),
+				);
+			}
+		}
 		if ( is_singular( 'post' ) ) {
 			$graph[] = array(
 				'@type'         => array( 'Article', 'BlogPosting' ),
