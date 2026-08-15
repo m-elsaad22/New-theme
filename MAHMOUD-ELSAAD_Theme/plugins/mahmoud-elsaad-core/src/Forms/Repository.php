@@ -303,7 +303,7 @@ class Repository {
 			'placeholder' => sanitize_text_field( (string) ( $field['placeholder'] ?? '' ) ),
 			'help'        => sanitize_text_field( (string) ( $field['help'] ?? '' ) ),
 			'required'    => ! empty( $field['required'] ),
-			'width'       => in_array( ( $field['width'] ?? 'full' ), array( 'full', 'half' ), true ) ? $field['width'] : 'full',
+			'width'       => in_array( ( $field['width'] ?? 'full' ), array( 'full', 'half' ), true ) ? (string) ( $field['width'] ?? 'full' ) : 'full',
 			'options'     => $options,
 			'validation'  => array(
 				'min'       => sanitize_text_field( (string) ( $validation['min'] ?? '' ) ),
@@ -314,7 +314,7 @@ class Repository {
 			),
 			'conditional' => array(
 				'field' => sanitize_key( (string) ( $cond['field'] ?? '' ) ),
-				'op'    => in_array( ( $cond['op'] ?? 'equals' ), array( 'equals', 'not_equals', 'contains' ), true ) ? $cond['op'] : 'equals',
+				'op'    => in_array( ( $cond['op'] ?? 'equals' ), array( 'equals', 'not_equals', 'contains' ), true ) ? (string) ( $cond['op'] ?? 'equals' ) : 'equals',
 				'value' => sanitize_text_field( (string) ( $cond['value'] ?? '' ) ),
 			),
 		);

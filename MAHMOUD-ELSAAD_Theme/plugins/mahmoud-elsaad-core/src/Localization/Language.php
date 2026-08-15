@@ -20,6 +20,7 @@ class Language {
 	public static function init(): void {
 		self::strip_prefix();
 		add_action( 'parse_request', array( __CLASS__, 'parse' ), 1 );
+		add_action( 'parse_query', array( __CLASS__, 'parse_query' ) );
 		add_filter( 'locale', array( __CLASS__, 'filter_locale' ) );
 		add_action( 'wp_head', array( __CLASS__, 'hreflang' ), 2 );
 		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
@@ -84,13 +85,16 @@ class Language {
 		$parts = $rel === '' ? array() : explode( '/', $rel );
 		$first = $parts[0] ?? '';
 		if ( ! in_array( $first, self::supported(), true ) ) {
-			$GLOBALS['mes_language'] = self::default_code();
+			$GLOBALS['mes_language']           = self::default_code();
+			$GLOBALS['mes_language_prefixed']  = false;
+			$GLOBALS['mes_language_rest']      = $rel;
 			return;
 		}
 
 		array_shift( $parts );
-		$GLOBALS['mes_language']      = $first;
-		$GLOBALS['mes_language_rest'] = implode( '/', $parts );
+		$GLOBALS['mes_language']          = $first;
+		$GLOBALS['mes_language_prefixed'] = true;
+		$GLOBALS['mes_language_rest']     = implode( '/', $parts );
 
 		$new_path = '/' . ( $home ? $home . '/' : '' ) . implode( '/', $parts );
 		$new_path = $new_path === '//' ? '/' : $new_path;
@@ -99,6 +103,9 @@ class Language {
 		}
 		$query = wp_parse_url( $uri, PHP_URL_QUERY );
 		$_SERVER['REQUEST_URI'] = $new_path . ( $query ? '?' . $query : '' );
+		if ( isset( $_SERVER['PATH_INFO'] ) ) {
+			$_SERVER['PATH_INFO'] = $new_path === '/' ? '' : $new_path;
+		}
 	}
 
 	/**
@@ -107,11 +114,39 @@ class Language {
 	 * @param \WP $wp WP object.
 	 */
 	public static function parse( \WP $wp ): void {
+		$pagename = (string) ( $wp->query_vars['pagename'] ?? $wp->query_vars['name'] ?? '' );
+		if ( in_array( $pagename, self::supported(), true ) && empty( $GLOBALS['mes_language_rest'] ) ) {
+			$GLOBALS['mes_language'] = $pagename;
+			unset( $wp->query_vars['pagename'], $wp->query_vars['name'], $wp->query_vars['error'] );
+		}
 		if ( ! empty( $GLOBALS['mes_language'] ) ) {
 			$wp->query_vars['mes_lang'] = (string) $GLOBALS['mes_language'];
+			if ( ! empty( $GLOBALS['mes_language_prefixed'] ) && '' === (string) ( $GLOBALS['mes_language_rest'] ?? '' ) ) {
+				unset( $wp->query_vars['pagename'], $wp->query_vars['name'], $wp->query_vars['error'] );
+			}
 			return;
 		}
 		$GLOBALS['mes_language'] = self::default_code();
+	}
+
+	/**
+	 * Language-only URLs are the homepage, not a 404.
+	 *
+	 * @param \WP_Query $query Query.
+	 */
+	public static function parse_query( \WP_Query $query ): void {
+		if ( ! $query->is_main_query() || is_admin() ) {
+			return;
+		}
+		$lang_only = ! empty( $GLOBALS['mes_language_prefixed'] ) && $query->get( 'mes_lang' ) && ! $query->get( 'mes_service_city' ) && ! $query->get( 'p' ) && ! $query->get( 'page_id' );
+		$rest      = (string) ( $GLOBALS['mes_language_rest'] ?? '' );
+		if ( $lang_only && '' === $rest ) {
+			$query->is_home       = true;
+			$query->is_front_page = true;
+			$query->is_404        = false;
+			$query->is_page       = false;
+			$query->is_singular   = false;
+		}
 	}
 
 	/**
@@ -197,7 +232,7 @@ class Language {
 	 * @param \WP_Query $query Query.
 	 */
 	public static function filter_query( \WP_Query $query ): void {
-		if ( is_admin() || $query->is_singular() || $query->is_search() ) {
+		if ( is_admin() || $query->is_singular() || $query->is_search() || $query->is_home() || $query->is_front_page() ) {
 			return;
 		}
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {

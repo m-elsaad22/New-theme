@@ -45,6 +45,11 @@ class Rewrites {
 		add_rewrite_tag( '%mes_lang%', '(ar|en)' );
 
 		add_rewrite_rule(
+			'^(ar|en)/?$',
+			'index.php?mes_lang=$matches[1]',
+			'top'
+		);
+		add_rewrite_rule(
 			'^(ar|en)/services/([^/]+)/([^/]+)/?$',
 			'index.php?mes_lang=$matches[1]&mes_service_city=1&mes_service_slug=$matches[2]&mes_city_slug=$matches[3]',
 			'top'

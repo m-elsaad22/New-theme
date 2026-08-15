@@ -296,8 +296,8 @@ class Rest {
 		if ( ! $group ) {
 			return new \WP_Error( 'mes_bad_group', 'Unknown group', array( 'status' => 400 ) );
 		}
-		$params = $request->get_json_params();
-		if ( ! is_array( $params ) ) {
+		$params = self::request_payload( $request );
+		if ( ! is_array( $params ) || array() === $params ) {
 			return new \WP_Error( 'mes_bad_json', 'Invalid payload', array( 'status' => 400 ) );
 		}
 		if ( 'mes_ai_settings' === $group && ! empty( $params['api_key'] ) ) {
@@ -558,6 +558,22 @@ class Rest {
 	public static function duplicate_form( \WP_REST_Request $request ) {
 		$result = FormRepository::duplicate( absint( $request['id'] ) );
 		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	/**
+	 * JSON body or request params.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return array<string, mixed>
+	 */
+	private static function request_payload( \WP_REST_Request $request ): array {
+		$params = $request->get_json_params();
+		if ( is_array( $params ) && array() !== $params ) {
+			return $params;
+		}
+		$params = $request->get_params();
+		unset( $params['group'], $params['rest_route'], $params['id'] );
+		return is_array( $params ) ? $params : array();
 	}
 
 	/**

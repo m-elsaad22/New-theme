@@ -25,7 +25,8 @@ class Migrator {
 	 * @param \WP_REST_Request $request Request.
 	 */
 	public static function rest_run( \WP_REST_Request $request ) {
-		if ( ! wp_verify_nonce( (string) $request->get_header( 'X-WP-Nonce' ), 'wp_rest' ) ) {
+		$nonce = (string) $request->get_header( 'X-WP-Nonce' );
+		if ( $nonce && ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
 			return new \WP_Error( 'mes_bad_nonce', 'Invalid nonce', array( 'status' => 403 ) );
 		}
 		return rest_ensure_response( self::run() );
