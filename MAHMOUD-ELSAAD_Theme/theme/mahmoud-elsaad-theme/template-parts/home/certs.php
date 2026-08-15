@@ -16,7 +16,7 @@ $certs = apply_filters(
 	)
 );
 ?>
-<section class="sec" id="certs" style="background:var(--white)">
+<section class="sec" id="certs" style="background:var(--white)"<?php echo mes_theme_visual_attrs( 'section:home.certs' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv">
 			<span class="tag"><?php esc_html_e( 'Trust', 'mahmoud-elsaad' ); ?></span>

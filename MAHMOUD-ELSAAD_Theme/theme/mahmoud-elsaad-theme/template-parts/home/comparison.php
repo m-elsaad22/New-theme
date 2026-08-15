@@ -6,7 +6,7 @@
  */
 $name = function_exists( 'mes_brand_name' ) ? mes_brand_name() : get_bloginfo( 'name' );
 ?>
-<section class="sec" id="compare" style="background:var(--white)">
+<section class="sec" id="compare" style="background:var(--white)"<?php echo mes_theme_visual_attrs( 'section:home.comparison' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Compare', 'mahmoud-elsaad' ); ?></span><h2><?php echo esc_html( $name ); ?></h2></div>
 		<div class="cmp rv">

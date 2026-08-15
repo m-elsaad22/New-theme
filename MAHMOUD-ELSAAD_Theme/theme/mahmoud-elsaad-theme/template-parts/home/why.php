@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec" id="why">
+<section class="sec" id="why"<?php echo mes_theme_visual_attrs( 'section:home.why' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap why">
 		<div class="why-time rv">
 			<div class="inner">

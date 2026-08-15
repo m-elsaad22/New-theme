@@ -91,3 +91,12 @@ function mes_language_url( string $path = '', ?string $lang = null ): string {
 	}
 	return home_url( '/' . ltrim( $path, '/' ) );
 }
+
+/**
+ * Visual tree node attributes for inheritance/overrides.
+ *
+ * @param string $node_id Node id such as section:home.hero.
+ */
+function mes_visual_attrs( string $node_id ): string {
+	return ' data-mes-node="' . esc_attr( $node_id ) . '"';
+}

@@ -23,9 +23,9 @@ if ( ! $row ) {
 $data = \MahmoudElsaad\Core\Relations\ServiceCity::landing( $row );
 get_header();
 ?>
-<section class="phero compact">
-	<div class="wrap">
-		<h1><?php echo esc_html( $data['title'] ); ?></h1>
+<section class="phero compact"<?php echo mes_theme_visual_attrs( 'section:service-city.hero' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+	<div class="wrap"<?php echo mes_theme_visual_attrs( 'component:service-city.hero.copy' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+		<h1<?php echo mes_theme_visual_attrs( 'element:service-city.hero.title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $data['title'] ); ?></h1>
 		<p><?php echo esc_html( $data['excerpt'] ); ?></p>
 		<div class="hero-ctas">
 			<?php

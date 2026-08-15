@@ -9,7 +9,7 @@ if ( ! $items ) {
 	return;
 }
 ?>
-<section class="sec" id="results" style="background:var(--white)">
+<section class="sec" id="results" style="background:var(--white)"<?php echo mes_theme_visual_attrs( 'section:home.before_after' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Results', 'mahmoud-elsaad' ); ?></span><h2><?php esc_html_e( 'Before and after', 'mahmoud-elsaad' ); ?></h2></div>
 		<div class="ba-wrap">

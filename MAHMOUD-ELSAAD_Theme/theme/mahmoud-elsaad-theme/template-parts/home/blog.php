@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec" id="blog">
+<section class="sec" id="blog"<?php echo mes_theme_visual_attrs( 'section:home.blog' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Blog', 'mahmoud-elsaad' ); ?></span><h2><?php esc_html_e( 'Latest articles', 'mahmoud-elsaad' ); ?></h2></div>
 		<div class="blog-grid">

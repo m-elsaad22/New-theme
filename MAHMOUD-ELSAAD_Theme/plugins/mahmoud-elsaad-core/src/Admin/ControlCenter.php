@@ -101,7 +101,10 @@ class ControlCenter {
 			return;
 		}
 		wp_enqueue_style( 'mes-admin', MES_CORE_URL . 'assets/admin/css/control-center.css', array(), MES_CORE_VERSION );
+		wp_enqueue_style( 'mes-visual-editor', MES_CORE_URL . 'assets/admin/css/visual-editor.css', array( 'mes-admin' ), MES_CORE_VERSION );
 		wp_enqueue_script( 'mes-admin', MES_CORE_URL . 'assets/admin/js/control-center.js', array(), MES_CORE_VERSION, true );
+		wp_enqueue_script( 'mes-visual-editor', MES_CORE_URL . 'assets/admin/js/visual-editor.js', array( 'mes-admin' ), MES_CORE_VERSION, true );
+		wp_enqueue_script( 'mes-form-builder', MES_CORE_URL . 'assets/admin/js/form-builder.js', array( 'mes-admin' ), MES_CORE_VERSION, true );
 		wp_localize_script(
 			'mes-admin',
 			'mesAdmin',
@@ -146,6 +149,7 @@ class ControlCenter {
 			'cities'      => __( 'Cities', 'mahmoud-elsaad-core' ),
 			'landings'    => __( 'Service × City', 'mahmoud-elsaad-core' ),
 			'leads'       => __( 'Leads', 'mahmoud-elsaad-core' ),
+			'forms'       => __( 'Forms', 'mahmoud-elsaad-core' ),
 			'analytics'   => __( 'Analytics', 'mahmoud-elsaad-core' ),
 			'design'      => __( 'Design', 'mahmoud-elsaad-core' ),
 			'seo'         => __( 'SEO', 'mahmoud-elsaad-core' ),

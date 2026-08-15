@@ -10,7 +10,7 @@ if ( ! $q->have_posts() && empty( $cats ) ) {
 	return;
 }
 ?>
-<section class="sec" id="hub">
+<section class="sec" id="hub"<?php echo mes_theme_visual_attrs( 'section:home.knowledge' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv">
 			<span class="tag"><?php esc_html_e( 'Knowledge hub', 'mahmoud-elsaad' ); ?></span>

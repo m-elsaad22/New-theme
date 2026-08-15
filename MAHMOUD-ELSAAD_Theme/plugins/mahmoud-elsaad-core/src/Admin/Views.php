@@ -7,11 +7,15 @@
 
 namespace MahmoudElsaad\Core\Admin;
 
+use MahmoudElsaad\Core\Forms\Repository as FormRepository;
 use MahmoudElsaad\Core\Relations\ServiceCity;
 use MahmoudElsaad\Core\SEO\RankMath;
 use MahmoudElsaad\Core\Support\Logger;
 use MahmoudElsaad\Core\Support\Options;
 use MahmoudElsaad\Core\Tracking\Clicks;
+use MahmoudElsaad\Core\Visual\Preview;
+use MahmoudElsaad\Core\Visual\Schema as VisualSchema;
+use MahmoudElsaad\Core\Visual\Tree as VisualTree;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,7 +37,6 @@ class Views {
 			'portfolio' => 'edit.php?post_type=mes_portfolio',
 			'team'      => 'edit.php?post_type=mes_team',
 			'partners'  => 'edit.php?post_type=mes_partner',
-			'forms'     => 'edit.php?post_type=mes_form',
 			'leads'     => 'edit.php?post_type=mes_lead',
 		);
 
@@ -79,6 +82,10 @@ class Views {
 		}
 		if ( 'landings' === $view ) {
 			self::landings();
+			return;
+		}
+		if ( 'forms' === $view ) {
+			self::forms();
 			return;
 		}
 		if ( isset( $map[ $view ] ) ) {
@@ -191,12 +198,64 @@ class Views {
 	}
 
 	/**
-	 * Design tokens + homepage sections.
+	 * Design tokens + visual tree editor + homepage sections.
 	 */
 	private static function design(): void {
 		$brand    = Options::get( 'mes_brand_settings', array() );
 		$design   = Options::get( 'mes_design_system', array() );
 		$sections = Options::get( 'mes_homepage_sections', array() );
+		$flat     = VisualTree::flatten();
+		$groups   = VisualSchema::groups();
+		$props    = VisualSchema::properties();
+
+		echo '<div class="mes-cc-card mes-visual-shell"><h1>' . esc_html__( 'Visual control', 'mahmoud-elsaad-core' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Global → Page → Section → Component → Element. Desktop values inherit to tablet and mobile unless overridden. Changing a child does not change the parent.', 'mahmoud-elsaad-core' ) . '</p>';
+		echo '<div class="mes-visual" id="mes-visual" data-preview="' . esc_url( Preview::url( '/' ) ) . '">';
+		echo '<div class="mes-visual-tree" role="tree">';
+		foreach ( $flat as $row ) {
+			echo '<button type="button" class="mes-visual-node" role="treeitem" data-node="' . esc_attr( $row['id'] ) . '" data-type="' . esc_attr( $row['type'] ) . '" style="padding-inline-start:' . esc_attr( (string) ( 8 + ( 16 * (int) $row['depth'] ) ) ) . 'px">';
+			echo '<span class="mes-visual-type">' . esc_html( $row['type'] ) . '</span> ' . esc_html( $row['label'] );
+			echo '</button>';
+		}
+		echo '</div>';
+		echo '<div class="mes-visual-props">';
+		echo '<div class="mes-visual-bps">';
+		foreach ( array( 'desktop' => __( 'Desktop', 'mahmoud-elsaad-core' ), 'tablet' => __( 'Tablet', 'mahmoud-elsaad-core' ), 'mobile' => __( 'Mobile', 'mahmoud-elsaad-core' ) ) as $bp => $label ) {
+			echo '<button type="button" class="mes-cc-btn mes-bp" data-bp="' . esc_attr( $bp ) . '">' . esc_html( $label ) . '</button>';
+		}
+		echo '</div>';
+		echo '<p class="mes-visual-current" id="mes-visual-current"></p>';
+		echo '<form id="mes-visual-form" class="mes-cc-form mes-cc-form-wide">';
+		foreach ( $groups as $gkey => $glabel ) {
+			echo '<fieldset class="mes-visual-group"><legend>' . esc_html( $glabel ) . '</legend>';
+			foreach ( $props as $pkey => $meta ) {
+				if ( ( $meta['group'] ?? '' ) !== $gkey ) {
+					continue;
+				}
+				echo '<label>' . esc_html( $pkey );
+				if ( 'select' === ( $meta['type'] ?? '' ) ) {
+					echo '<select name="' . esc_attr( $pkey ) . '"><option value=""></option>';
+					foreach ( (array) ( $meta['options'] ?? array() ) as $opt ) {
+						echo '<option value="' . esc_attr( (string) $opt ) . '">' . esc_html( (string) $opt ) . '</option>';
+					}
+					echo '</select>';
+				} elseif ( 'color' === ( $meta['type'] ?? '' ) ) {
+					echo '<input type="text" name="' . esc_attr( $pkey ) . '" placeholder="#0A1F4E or var(--mes-navy)" />';
+				} elseif ( 'toggle' === ( $meta['type'] ?? '' ) ) {
+					echo '<select name="' . esc_attr( $pkey ) . '"><option value=""></option><option value="none">' . esc_html__( 'Hide', 'mahmoud-elsaad-core' ) . '</option></select>';
+				} else {
+					echo '<input type="text" name="' . esc_attr( $pkey ) . '" />';
+				}
+				echo '</label>';
+			}
+			echo '</fieldset>';
+		}
+		echo '<button class="mes-cc-btn" type="button" id="mes-visual-clear">' . esc_html__( 'Clear this breakpoint', 'mahmoud-elsaad-core' ) . '</button> ';
+		echo '<button class="mes-cc-btn" type="submit">' . esc_html__( 'Publish visual CSS', 'mahmoud-elsaad-core' ) . '</button>';
+		echo '</form></div>';
+		echo '<div class="mes-visual-preview"><iframe id="mes-visual-frame" title="' . esc_attr__( 'Live homepage preview', 'mahmoud-elsaad-core' ) . '" src="' . esc_url( Preview::url( '/' ) ) . '"></iframe></div>';
+		echo '</div></div>';
+
 		echo '<div class="mes-cc-card"><h1>' . esc_html__( 'Design tokens', 'mahmoud-elsaad-core' ) . '</h1>';
 		echo '<form id="mes-design-form" class="mes-cc-form" data-group="brand_settings">';
 		echo '<label>' . esc_html__( 'Primary', 'mahmoud-elsaad-core' ) . '<input type="color" name="primary_color" value="' . esc_attr( $brand['primary_color'] ?? '#0A1F4E' ) . '" /></label>';
@@ -357,6 +416,50 @@ class Views {
 		echo '<p>' . esc_html__( 'Backup runs first. No secrets are copied.', 'mahmoud-elsaad-core' ) . '</p>';
 		echo '<button class="mes-cc-btn" type="button" id="mes-run-migration">' . esc_html__( 'Run migration', 'mahmoud-elsaad-core' ) . '</button>';
 		echo '<pre id="mes-migration-log"></pre></div>';
+	}
+
+	/**
+	 * Persistent form builder.
+	 */
+	private static function forms(): void {
+		$forms = FormRepository::all();
+		$types = FormRepository::field_types();
+		echo '<div class="mes-cc-card mes-fb-shell"><h1>' . esc_html__( 'Form builder', 'mahmoud-elsaad-core' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Forms are stored as mes_form posts. Field order, settings, and submit actions persist in the database.', 'mahmoud-elsaad-core' ) . '</p>';
+		echo '<div class="mes-fb" id="mes-fb" data-forms="' . esc_attr( (string) wp_json_encode( $forms ) ) . '" data-types="' . esc_attr( (string) wp_json_encode( $types ) ) . '">';
+		echo '<div class="mes-fb-list">';
+		echo '<button type="button" class="mes-cc-btn" id="mes-fb-new">' . esc_html__( 'Create form', 'mahmoud-elsaad-core' ) . '</button>';
+		echo '<ul id="mes-fb-forms">';
+		foreach ( $forms as $form ) {
+			echo '<li><button type="button" class="mes-fb-open" data-id="' . esc_attr( (string) $form['id'] ) . '">' . esc_html( $form['title'] ) . '</button></li>';
+		}
+		echo '</ul></div>';
+		echo '<div class="mes-fb-editor" hidden>';
+		echo '<div class="mes-fb-toolbar">';
+		echo '<input type="text" id="mes-fb-title" />';
+		echo '<button type="button" class="mes-cc-btn" id="mes-fb-save">' . esc_html__( 'Save', 'mahmoud-elsaad-core' ) . '</button>';
+		echo '<button type="button" class="mes-cc-btn" id="mes-fb-dup">' . esc_html__( 'Duplicate', 'mahmoud-elsaad-core' ) . '</button>';
+		echo '<button type="button" class="mes-cc-btn" id="mes-fb-del">' . esc_html__( 'Delete', 'mahmoud-elsaad-core' ) . '</button>';
+		echo '</div>';
+		echo '<div class="mes-fb-palette">';
+		foreach ( $types as $type ) {
+			echo '<button type="button" class="mes-fb-add" data-type="' . esc_attr( $type ) . '" draggable="true">' . esc_html( $type ) . '</button>';
+		}
+		echo '</div>';
+		echo '<ol id="mes-fb-fields" class="mes-fb-fields"></ol>';
+		echo '<div id="mes-fb-field-settings" class="mes-fb-field-settings"></div>';
+		echo '<fieldset class="mes-visual-group"><legend>' . esc_html__( 'Submit actions', 'mahmoud-elsaad-core' ) . '</legend>';
+		echo '<label class="mes-cc-check"><input type="checkbox" id="mes-fb-save-lead" checked /> ' . esc_html__( 'Save Lead', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label class="mes-cc-check"><input type="checkbox" id="mes-fb-email" checked /> ' . esc_html__( 'Email notification', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label>' . esc_html__( 'Notify email', 'mahmoud-elsaad-core' ) . '<input type="email" id="mes-fb-notify" /></label>';
+		echo '<label class="mes-cc-check"><input type="checkbox" id="mes-fb-webhook" /> ' . esc_html__( 'Webhook', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label>' . esc_html__( 'Webhook URL', 'mahmoud-elsaad-core' ) . '<input type="url" id="mes-fb-webhook-url" /></label>';
+		echo '<label class="mes-cc-check"><input type="checkbox" id="mes-fb-wa" /> ' . esc_html__( 'WhatsApp action', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label>' . esc_html__( 'WhatsApp number', 'mahmoud-elsaad-core' ) . '<input type="text" id="mes-fb-wa-number" /></label>';
+		echo '<label class="mes-cc-check"><input type="checkbox" id="mes-fb-wa-redirect" /> ' . esc_html__( 'Redirect visitor to WhatsApp', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label>' . esc_html__( 'Success message', 'mahmoud-elsaad-core' ) . '<textarea id="mes-fb-success"></textarea></label>';
+		echo '<label>' . esc_html__( 'Error message', 'mahmoud-elsaad-core' ) . '<textarea id="mes-fb-error"></textarea></label>';
+		echo '</fieldset></div></div></div>';
 	}
 
 	/**

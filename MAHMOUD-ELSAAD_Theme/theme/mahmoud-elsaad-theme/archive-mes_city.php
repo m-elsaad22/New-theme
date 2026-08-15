@@ -6,7 +6,7 @@
  */
 get_header();
 ?>
-<section class="phero compact"><div class="wrap"><h1><?php post_type_archive_title(); ?></h1></div></section>
+<section class="phero compact"<?php echo mes_theme_visual_attrs( 'section:archive-city.hero' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><div class="wrap"<?php echo mes_theme_visual_attrs( 'component:archive-city.hero.copy' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><h1<?php echo mes_theme_visual_attrs( 'element:archive-city.hero.title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php post_type_archive_title(); ?></h1></div></section>
 <section class="sec"><div class="wrap"><div class="area-cards">
 <?php
 while ( have_posts() ) {

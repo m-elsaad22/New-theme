@@ -9,11 +9,15 @@ namespace MahmoudElsaad\Core\API;
 
 use MahmoudElsaad\Core\AI\Manager as AIManager;
 use MahmoudElsaad\Core\Demo\Content as DemoContent;
+use MahmoudElsaad\Core\Forms\Repository as FormRepository;
 use MahmoudElsaad\Core\LegacyMigration\Migrator;
 use MahmoudElsaad\Core\Relations\ServiceCity;
 use MahmoudElsaad\Core\Support\Capabilities;
 use MahmoudElsaad\Core\Support\Logger;
 use MahmoudElsaad\Core\Support\Options;
+use MahmoudElsaad\Core\Visual\Compiler as VisualCompiler;
+use MahmoudElsaad\Core\Visual\Schema as VisualSchema;
+use MahmoudElsaad\Core\Visual\Tree as VisualTree;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -161,6 +165,82 @@ class Rest {
 			array(
 				'methods'             => 'GET',
 				'callback'            => static fn() => rest_ensure_response( Logger::recent() ),
+				'permission_callback' => static fn() => Capabilities::can_manage(),
+			)
+		);
+
+		register_rest_route(
+			'mes/v1',
+			'/visual/tree',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( __CLASS__, 'get_visual_tree' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( __CLASS__, 'save_visual_tree' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+			)
+		);
+
+		register_rest_route(
+			'mes/v1',
+			'/visual/compile',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'compile_visual' ),
+				'permission_callback' => static fn() => Capabilities::can_manage(),
+			)
+		);
+
+		register_rest_route(
+			'mes/v1',
+			'/forms',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => static fn() => rest_ensure_response( FormRepository::all() ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( __CLASS__, 'create_form' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+			)
+		);
+
+		register_rest_route(
+			'mes/v1',
+			'/forms/(?P<id>\d+)',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( __CLASS__, 'get_form' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( __CLASS__, 'update_form' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+				array(
+					'methods'             => 'DELETE',
+					'callback'            => array( __CLASS__, 'delete_form' ),
+					'permission_callback' => static fn() => Capabilities::can_manage(),
+				),
+			)
+		);
+
+		register_rest_route(
+			'mes/v1',
+			'/forms/(?P<id>\d+)/duplicate',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'duplicate_form' ),
 				'permission_callback' => static fn() => Capabilities::can_manage(),
 			)
 		);
@@ -369,6 +449,115 @@ class Rest {
 		return $ok
 			? rest_ensure_response( array( 'ok' => true ) )
 			: new \WP_Error( 'mes_missing', 'Revision not found', array( 'status' => 404 ) );
+	}
+
+	/**
+	 * Visual tree + schema for the editor.
+	 */
+	public static function get_visual_tree() {
+		return rest_ensure_response(
+			array(
+				'tree'        => VisualTree::get(),
+				'flat'        => VisualTree::flatten(),
+				'schema'      => VisualSchema::properties(),
+				'groups'      => VisualSchema::groups(),
+				'breakpoints' => VisualSchema::breakpoints(),
+				'css'         => (string) get_option( 'mes_compiled_css', '' ),
+			)
+		);
+	}
+
+	/**
+	 * Save visual tree.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function save_visual_tree( \WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		$tree   = is_array( $params['tree'] ?? null ) ? $params['tree'] : $params;
+		if ( ! is_array( $tree ) || empty( $tree['id'] ) ) {
+			return new \WP_Error( 'mes_bad_tree', 'Invalid visual tree', array( 'status' => 400 ) );
+		}
+		$saved = VisualTree::save( $tree );
+		Logger::log( 'admin', 'Visual tree saved' );
+		return rest_ensure_response(
+			array(
+				'ok'   => true,
+				'tree' => $saved,
+				'css'  => (string) get_option( 'mes_compiled_css', '' ),
+			)
+		);
+	}
+
+	/**
+	 * Compile CSS without persisting unless asked.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function compile_visual( \WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		$tree   = is_array( $params['tree'] ?? null ) ? $params['tree'] : VisualTree::get();
+		$css    = VisualCompiler::compile( $tree );
+		if ( ! empty( $params['persist'] ) ) {
+			VisualCompiler::persist( $tree );
+		}
+		return rest_ensure_response( array( 'css' => $css ) );
+	}
+
+	/**
+	 * Create form.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function create_form( \WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		$result = FormRepository::create( is_array( $params ) ? $params : array() );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	/**
+	 * Get form.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function get_form( \WP_REST_Request $request ) {
+		$form = FormRepository::get( absint( $request['id'] ) );
+		return $form
+			? rest_ensure_response( $form )
+			: new \WP_Error( 'mes_missing_form', 'Form not found', array( 'status' => 404 ) );
+	}
+
+	/**
+	 * Update form.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function update_form( \WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		$result = FormRepository::update( absint( $request['id'] ), is_array( $params ) ? $params : array() );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	/**
+	 * Delete form.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function delete_form( \WP_REST_Request $request ) {
+		$ok = FormRepository::delete( absint( $request['id'] ) );
+		return $ok
+			? rest_ensure_response( array( 'ok' => true ) )
+			: new \WP_Error( 'mes_missing_form', 'Form not found', array( 'status' => 404 ) );
+	}
+
+	/**
+	 * Duplicate form.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	public static function duplicate_form( \WP_REST_Request $request ) {
+		$result = FormRepository::duplicate( absint( $request['id'] ) );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}
 
 	/**

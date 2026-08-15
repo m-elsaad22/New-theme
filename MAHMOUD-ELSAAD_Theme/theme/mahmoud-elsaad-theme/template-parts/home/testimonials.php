@@ -5,10 +5,10 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec reviews">
+<section class="sec reviews"<?php echo mes_theme_visual_attrs( 'section:home.reviews' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
-		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Reviews', 'mahmoud-elsaad' ); ?></span><h2><?php esc_html_e( 'What clients say', 'mahmoud-elsaad' ); ?></h2></div>
-		<div class="review-grid" id="rvTrack">
+		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Reviews', 'mahmoud-elsaad' ); ?></span><h2<?php echo mes_theme_visual_attrs( 'element:home.reviews.heading' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'What clients say', 'mahmoud-elsaad' ); ?></h2></div>
+		<div class="review-grid" id="rvTrack"<?php echo mes_theme_visual_attrs( 'component:home.reviews.list' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 			<?php
 			$q = new WP_Query( array( 'post_type' => 'mes_review', 'posts_per_page' => 6 ) );
 			while ( $q->have_posts() ) :

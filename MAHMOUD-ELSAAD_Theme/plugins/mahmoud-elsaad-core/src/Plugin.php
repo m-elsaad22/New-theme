@@ -26,6 +26,8 @@ use MahmoudElsaad\Core\SEO\RankMath;
 use MahmoudElsaad\Core\SEO\SchemaGraph;
 use MahmoudElsaad\Core\Support\Options;
 use MahmoudElsaad\Core\Tracking\Clicks;
+use MahmoudElsaad\Core\Visual\Front as VisualFront;
+use MahmoudElsaad\Core\Visual\Preview as VisualPreview;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -73,6 +75,8 @@ class Plugin {
 		Migrator::init();
 		PerformanceFront::init();
 		Hardening::init();
+		VisualFront::init();
+		VisualPreview::init();
 
 		add_filter( 'mes_core_ready', '__return_true' );
 		do_action( 'mes_core_booted', $this );

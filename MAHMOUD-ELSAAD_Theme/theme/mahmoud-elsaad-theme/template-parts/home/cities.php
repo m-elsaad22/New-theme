@@ -5,10 +5,10 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec" id="areas">
+<section class="sec" id="areas"<?php echo mes_theme_visual_attrs( 'section:home.cities' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
-		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Coverage', 'mahmoud-elsaad' ); ?></span><h2><?php esc_html_e( 'Cities we serve', 'mahmoud-elsaad' ); ?></h2></div>
-		<div class="area-cards">
+		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Coverage', 'mahmoud-elsaad' ); ?></span><h2<?php echo mes_theme_visual_attrs( 'element:home.cities.heading' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Cities we serve', 'mahmoud-elsaad' ); ?></h2></div>
+		<div class="area-cards"<?php echo mes_theme_visual_attrs( 'component:home.cities.grid' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 			<?php
 			$q = new WP_Query( array( 'post_type' => 'mes_city', 'posts_per_page' => 8 ) );
 			while ( $q->have_posts() ) :

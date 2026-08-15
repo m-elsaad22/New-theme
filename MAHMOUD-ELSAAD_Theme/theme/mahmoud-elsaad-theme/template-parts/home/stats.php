@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec stats">
+<section class="sec stats"<?php echo mes_theme_visual_attrs( 'section:home.stats' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv"><h2><?php esc_html_e( 'Numbers that matter', 'mahmoud-elsaad' ); ?></h2></div>
 		<div class="stats-grid">

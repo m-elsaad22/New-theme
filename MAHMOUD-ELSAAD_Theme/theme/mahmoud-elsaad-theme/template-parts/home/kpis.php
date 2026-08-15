@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<div class="wrap atb-wrap">
+<div class="wrap atb-wrap"<?php echo mes_theme_visual_attrs( 'section:home.kpis' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="atb rv">
 		<div class="atb-item"><i class="fas fa-briefcase"></i><div><b data-count="<?php echo esc_attr( (string) wp_count_posts( 'mes_portfolio' )->publish ); ?>">0</b><small><?php esc_html_e( 'Projects', 'mahmoud-elsaad' ); ?></small></div></div>
 		<div class="atb-item"><i class="fas fa-users"></i><div><b data-count="<?php echo esc_attr( (string) wp_count_posts( 'mes_review' )->publish ); ?>">0</b><small><?php esc_html_e( 'Reviews', 'mahmoud-elsaad' ); ?></small></div></div>

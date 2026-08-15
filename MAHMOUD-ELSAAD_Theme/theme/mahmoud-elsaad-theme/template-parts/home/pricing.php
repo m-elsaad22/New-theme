@@ -9,7 +9,7 @@ if ( ! $q->have_posts() ) {
 	return;
 }
 ?>
-<section class="sec" id="pricing">
+<section class="sec" id="pricing"<?php echo mes_theme_visual_attrs( 'section:home.pricing' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv">
 			<span class="tag"><?php esc_html_e( 'Pricing', 'mahmoud-elsaad' ); ?></span>

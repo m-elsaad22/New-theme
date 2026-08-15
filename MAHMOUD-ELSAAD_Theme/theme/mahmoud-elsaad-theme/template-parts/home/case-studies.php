@@ -19,7 +19,7 @@ if ( ! $q->have_posts() ) {
 	return;
 }
 ?>
-<section class="sec" id="cases">
+<section class="sec" id="cases"<?php echo mes_theme_visual_attrs( 'section:home.case_studies' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv">
 			<span class="tag"><?php esc_html_e( 'Success stories', 'mahmoud-elsaad' ); ?></span>

@@ -38,6 +38,9 @@ $options = array(
 	'mes_homepage_sections',
 	'mes_schema_version',
 	'mes_migration_state',
+	'mes_visual_tree',
+	'mes_compiled_css',
+	'mes_compiled_css_ver',
 );
 
 foreach ( $options as $option ) {

@@ -62,6 +62,18 @@ function mes_html_lang(): string {
 }
 
 /**
+ * Visual node attributes (theme fallback if the plugin helper is missing).
+ *
+ * @param string $node_id Node id.
+ */
+function mes_theme_visual_attrs( string $node_id ): string {
+	if ( function_exists( 'mes_visual_attrs' ) ) {
+		return mes_visual_attrs( $node_id );
+	}
+	return ' data-mes-node="' . esc_attr( $node_id ) . '"';
+}
+
+/**
  * Simple breadcrumb list.
  */
 function mes_breadcrumbs(): string {

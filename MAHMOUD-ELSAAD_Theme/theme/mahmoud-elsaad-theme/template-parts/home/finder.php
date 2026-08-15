@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec finder-sec" id="finder">
+<section class="sec finder-sec" id="finder"<?php echo mes_theme_visual_attrs( 'section:home.finder' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv">
 			<span class="tag"><?php esc_html_e( 'Start now', 'mahmoud-elsaad' ); ?></span>

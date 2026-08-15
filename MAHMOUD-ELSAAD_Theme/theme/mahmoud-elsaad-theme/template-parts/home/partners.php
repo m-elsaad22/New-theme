@@ -5,10 +5,10 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec brands">
+<section class="sec brands"<?php echo mes_theme_visual_attrs( 'section:home.partners' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
-		<div class="shead rv"><h2><?php esc_html_e( 'Partners', 'mahmoud-elsaad' ); ?></h2></div>
-		<div class="brand-row">
+		<div class="shead rv"><h2<?php echo mes_theme_visual_attrs( 'element:home.partners.heading' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Partners', 'mahmoud-elsaad' ); ?></h2></div>
+		<div class="brand-row"<?php echo mes_theme_visual_attrs( 'component:home.partners.row' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 			<?php
 			$q = new WP_Query( array( 'post_type' => 'mes_partner', 'posts_per_page' => 12 ) );
 			while ( $q->have_posts() ) :

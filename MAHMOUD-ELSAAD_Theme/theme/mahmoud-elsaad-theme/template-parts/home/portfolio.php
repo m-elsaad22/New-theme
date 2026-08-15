@@ -5,7 +5,7 @@
  * @package MahmoudElsaad\Theme
  */
 ?>
-<section class="sec" id="projects">
+<section class="sec" id="projects"<?php echo mes_theme_visual_attrs( 'section:home.portfolio' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<div class="wrap">
 		<div class="shead rv"><span class="tag"><?php esc_html_e( 'Portfolio', 'mahmoud-elsaad' ); ?></span><h2><?php esc_html_e( 'Recent work', 'mahmoud-elsaad' ); ?></h2></div>
 		<div class="gal-grid">

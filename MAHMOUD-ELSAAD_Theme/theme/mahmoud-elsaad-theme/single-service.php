@@ -7,9 +7,9 @@
 get_header();
 the_post();
 ?>
-<section class="phero compact">
-	<div class="wrap">
-		<h1><?php the_title(); ?></h1>
+<section class="phero compact"<?php echo mes_theme_visual_attrs( 'section:single-service.hero' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+	<div class="wrap"<?php echo mes_theme_visual_attrs( 'component:single-service.hero.copy' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+		<h1<?php echo mes_theme_visual_attrs( 'element:single-service.hero.title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php the_title(); ?></h1>
 		<div class="hero-ctas">
 			<?php
 			echo function_exists( 'mes_render_whatsapp_button' ) ? mes_render_whatsapp_button( array( 'placement' => 'service' ) ) : '';
