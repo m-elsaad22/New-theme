@@ -336,6 +336,8 @@ if ( function_exists( 'curl_init' ) ) {
 			CURLOPT_HEADER         => true,
 			CURLOPT_FOLLOWLOCATION => false,
 			CURLOPT_TIMEOUT        => 20,
+			CURLOPT_SSL_VERIFYPEER => false,
+			CURLOPT_SSL_VERIFYHOST => 0,
 		)
 	);
 	$raw  = (string) curl_exec( $ch );
