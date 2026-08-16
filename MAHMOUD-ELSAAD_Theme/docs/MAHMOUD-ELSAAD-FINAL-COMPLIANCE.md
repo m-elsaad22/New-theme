@@ -78,6 +78,7 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 | Dashboard, content, landings, analytics, design, SEO, AI, performance, security, settings, migration | COMPLETE | Views rendered; Design screenshot |
 | Forms screen | COMPLETE | Builder view |
 | Brand / phone / WhatsApp settings | COMPLETE | Settings view + REST save |
+| Map embed | COMPLETE | Control Center stores allowlisted Google Maps / OSM HTTPS URL; homepage renders sandboxed `iframe.fmap-frame` only |
 | Mobile admin nav | PARTIAL | CSS bottom nav; no physical device |
 | Ctrl/K search | COMPLETE | Existing JS; not key-event tested this run |
 
@@ -101,7 +102,7 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 | Requirement | Status | Evidence |
 |---|---|---|
 | Encrypted keys, provider registry, local fallback | COMPLETE | Encrypt/decrypt + leak checks |
-| Real vendor successful completion | UNTESTED | No `MES_AI_API_KEY` |
+| Real vendor successful completion | UNTESTED | `MES_AI_API_KEY` unset. Optional secret requested. No key in repository. Not COMPLETE. |
 | Invalid key | COMPLETE | Real OpenAI HTTP 401 with fake key; user-friendly error |
 | 429 / 500 / empty / malformed | COMPLETE | Local stub; `ok:false` + fallback; no key leak |
 | Transport error | COMPLETE | Connection refused → fallback |
@@ -155,7 +156,7 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 | Requirement | Status | Evidence |
 |---|---|---|
 | WhatsApp contrast | COMPLETE | `#075E54` + white; hover/focus; not hidden. Homepage axe 0 violations. |
-| Icon-only / text buttons / focus | COMPLETE | `aria-label`; `:focus-visible` 3px |
+| Icon-only / text buttons / focus | COMPLETE | `aria-label`; `:focus-visible` 3px; Finder `.sel:has(select:focus)` 3px navy + gold ring (desktop + mobile) |
 | Heading order / landmarks | COMPLETE | Footer `h3`; mobile `<nav>`; homepage axe 0 |
 | Keyboard: header, mobile nav, forms | COMPLETE | Tab tour recorded |
 | Keyboard: Control Center | PARTIAL | Tabs reach MAHMOUD-ELSAAD admin items |
@@ -167,7 +168,7 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 | Requirement | Status | Evidence |
 |---|---|---|
 | Desktop Chrome | COMPLETE | Screenshots + Lighthouse |
-| Desktop Firefox | PARTIAL | Real Firefox 128 launched; hung on self-signed HTTPS (exit 124) |
+| Desktop Firefox | UNTESTED — environment limitation | No trusted HTTPS origin. Self-signed lab TLS is not scored as a Firefox bug. |
 | Physical Android | UNAVAILABLE | No device. Emulation is not counted. |
 
 ## Media / REST
@@ -186,12 +187,12 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 | Copying old Field machine / AjaxCenter dispatch | NOT APPLICABLE | Replaced |
 | Mega menu as default | NOT APPLICABLE | Hidden / compatibility only |
 | Freeform Elementor-like page builder | NOT APPLICABLE | Out of scope |
-| Successful real Gemini/OpenAI completion | UNTESTED | No valid vendor key in environment |
+| Successful real Gemini/OpenAI completion | UNTESTED | No `MES_AI_API_KEY` in environment; key must stay outside git |
 | Hung-socket AI timeout (full 45s) | PARTIAL | Fail-fast transport tested instead |
 | Live legacy WP SQL dump | UNAVAILABLE | Repo has HTML snapshots + theme PHP only |
-| Map embed iframe through `wp_kses_post` | PARTIAL | Source option remains; sanitized copy may drop iframe |
-| Finder `<select>` focus ring | PARTIAL | UA outline not fully restored |
-| Firefox screenshot on this TLS origin | PARTIAL | Binary ran; page capture hung |
+| Homepage map from Control Center | COMPLETE | Allowlisted Google Maps / OSM URL → sandboxed `iframe.fmap-frame`. Arbitrary hosts / `javascript:` rejected |
+| Finder `<select>` focus ring | COMPLETE | Keyboard + desktop/mobile; wrapper 3px `#0A1F4E`; homepage axe 0 |
+| Firefox on trusted HTTPS | UNTESTED — environment limitation | Lab cert is self-signed. Not classified as a Firefox compatibility failure |
 | Physical Android | UNAVAILABLE | No device |
 | Field INP | UNAVAILABLE | NOT COLLECTED |
 | 100% Master Spec | FAILED (as a claim) | Do not mark the project 100% complete |

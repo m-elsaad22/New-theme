@@ -469,10 +469,16 @@ footer{background:var(--footer);color:rgba(255,255,255,.82);padding:70px 0 0}
 .sel i{position:absolute;top:50%;inset-inline-start:14px;transform:translateY(-50%);color:var(--turq);font-size:15px;pointer-events:none}
 .sel select{width:100%;font-family:'Tajawal',sans-serif;font-weight:600;font-size:16px;color:var(--text);background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:14px 44px 14px 16px;cursor:pointer;appearance:none;-webkit-appearance:none;transition:.25s}
 .sel select:focus,.sel select:focus-visible{
-  outline:3px solid var(--gold);
-  outline-offset:3px;
+  outline:3px solid var(--navy);
+  outline-offset:2px;
   border-color:var(--navy);
-  box-shadow:0 0 0 4px rgba(201,162,39,.32);
+  box-shadow:0 0 0 4px rgba(201,162,39,.4);
+}
+.sel:has(select:focus),.sel:has(select:focus-visible){
+  outline:3px solid var(--navy);
+  outline-offset:3px;
+  border-radius:16px;
+  box-shadow:0 0 0 4px rgba(201,162,39,.4);
 }
 .sel::after{content:"\f078";font-family:"Font Awesome 6 Free";font-weight:900;position:absolute;top:50%;inset-inline-end:14px;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none}
 .finder-go .btn{width:100%}

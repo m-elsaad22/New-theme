@@ -91,7 +91,7 @@ Rank Math free still does not natively emit LocalBusiness or Service×City. MES 
 | Transport failure | COMPLETE | `127.0.0.1:1` → `http_request_failed`; user-facing fallback |
 | Hung-socket 45s timeout | PARTIAL | Timeout value is 45s; a full hang was not waited out |
 | Frontend / REST / logs | COMPLETE | No plaintext key in admin HTML, GET settings, `ai-assistant.js`, logs |
-| Successful real Gemini/OpenAI completion | UNTESTED | `MES_AI_API_KEY` unset. Optional secret requested. Do not commit keys |
+| Successful real Gemini/OpenAI completion | UNTESTED | `MES_AI_API_KEY` unset in this environment (length 0). Optional secret requested. No key in git. **Not COMPLETE.** |
 
 ---
 
@@ -162,7 +162,7 @@ Seeded from HTML: brand ركن التطور, phone/WhatsApp `+971586634710`, 12 
 | Post meta | 629 | 821 | 23 | 0 | 0 | Mapped keys copied. Unmapped keys remain on source (not deleted). |
 | Term meta | 25 | 44 | 19 | 0 | 0 | `icon` → `_mes_icon` when present. Other term meta remains on the term. |
 | Theme options | 9 | 9 | 8 | 0 | 0 | sitename/color/social mapped. `scrapestack_key` not copied. |
-| Contact options | 2 | 2 | 8 | 0 | 0 | Mail + address mapped. Map iframe may be stripped by `wp_kses_post`; source option remains. |
+| Contact options | 2 | 2 | 8 | 0 | 0 | Mail + address mapped. Map embed stored as allowlisted HTTPS URL (Google Maps / OSM) via `Contact::map_src`; arbitrary iframe HTML is discarded. |
 | Phone | 1 | 1 | 1 | 0 | 0 | `phonenumber` → `phones[]`. Duplicate digits are not appended. |
 | WhatsApp | 1 | 1 | 1 | 0 | 0 | `whatsapp_number` → `whatsapps[]`. Duplicate digits are not appended. |
 | Schema-related data | 0 | 0 | 0 | 0 | 0 | No legacy schema store. Runtime JSON-LD from migrated content + Rank Math. |
@@ -203,7 +203,7 @@ Inner templates were not re-scored this increment; no sections were stripped to 
 
 ## 9. Accessibility
 
-Homepage axe-core (`wcag2a` / `wcag2aa` / `wcag21aa` / `best-practice`): **0 violations**.
+Homepage axe-core (`wcag2a` / `wcag2aa` / `wcag21aa` / `best-practice`): **0 violations** (desktop 1440 and mobile 390).
 
 | Item | Before | After |
 |---|---|---|
@@ -211,12 +211,13 @@ Homepage axe-core (`wcag2a` / `wcag2aa` / `wcag21aa` / `best-practice`): **0 vio
 | Icon-only FABs | Empty label, no `aria-label` | `aria-label="WhatsApp"` / `Call` |
 | Text buttons | Icon + text | Same + `aria-label` |
 | Focus | Weak | `:focus-visible` 3px gold (navy/gold on dark CTAs) |
+| Finder `<select>` | `outline: none` on `#fnSvc` / `#fnCity` | `.sel:has(select:focus)` 3px solid `#0A1F4E` + gold box-shadow. Keyboard Tab hits both selects. Desktop + mobile. |
 | Footer headings | `h4` after section `h2` | `h3` |
 | Mobile drawer | Open via click | `aria-expanded`, `aria-controls`, Escape closes, focus moves to close |
 
-Keyboard (Tab on homepage): skip link → logo → search → menu → drawer (close, language, items, WhatsApp, Call) → quote → finder selects.
+Keyboard (Tab on homepage): skip link → logo → search → menu → drawer (close, language, items, WhatsApp, Call) → quote → finder selects (visible navy ring).
 
-Remaining: some `<select>` controls (`#fnSvc`, `#fnCity`) use the UA outline (`outline: none` from theme reset is not fully restored). OS-level reduced-motion **UNTESTED**. Visual editor canvas keyboard beyond CC chrome **PARTIAL** (tabs reach MAHMOUD-ELSAAD admin items; iframe interior not key-driven).
+Remaining: OS-level reduced-motion **UNTESTED**. Visual editor canvas keyboard beyond CC chrome **PARTIAL** (tabs reach MAHMOUD-ELSAAD admin items; iframe interior not key-driven).
 
 ---
 
@@ -225,13 +226,25 @@ Remaining: some `<select>` controls (`#fnSvc`, `#fnCity`) use the UA outline (`o
 | Target | Status | Evidence |
 |---|---|---|
 | Desktop Chrome | COMPLETE | Headless Chrome 148 + Lighthouse + screenshots (home, CC, design iframe) |
-| Desktop Firefox | PARTIAL | Real Firefox 128.0.3 binary extracted and launched `--headless`. Process hung 20s (exit 124) on the self-signed HTTPS origin; no screenshot. Not emulation. |
+| Desktop Firefox | UNTESTED — environment limitation | Firefox binary present (153.0.4). Lab origin is self-signed `CN=127.0.0.1` (`https://127.0.0.1:8443`). A prior hang on that certificate is **not** a Firefox compatibility failure. No normal trusted-HTTPS origin was available, so homepage/navigation/forms/visual editor/Control Center/service/service×city/FABs were **not** scored PASS or FAIL in Firefox. |
 | Physical Android | UNAVAILABLE | No device attached. Emulation is not counted. |
 | Control Center | COMPLETE | Screenshot + HTTPS iframe 384×744 |
 | Visual iframe | COMPLETE (admin) | `src` HTTPS |
 
 ---
 
+## 11. Map rendering (micro-hardening)
+
+Control Center → `POST /mes/v1/settings/contact_settings` → homepage footer.
+
+| Check | Status | Evidence |
+|---|---|---|
+| Google Maps iframe HTML saved as URL | COMPLETE | Stored `https://www.google.com/maps/embed?pb=!1m14…` (no `<iframe>` / `<script>` in option) |
+| Frontend iframe | COMPLETE | `iframe.fmap-frame` src Google Maps, `sandbox="allow-scripts allow-same-origin allow-popups"`, title “Headquarters map”, 1352×230 |
+| `wp_kses_post` no longer the render path | COMPLETE | `Contact::render_map()` builds the iframe; footer does not echo raw HTML |
+| Arbitrary iframe rejected | COMPLETE | `https://evil.example/hook` and `javascript:` → empty stored value |
+| OSM allowlist | COMPLETE | `https://www.openstreetmap.org/export/embed.html?…` accepted by `map_src` |
+
 ## Gate decision
 
-This increment is **PASS with documented leftovers**. The project is a **Production Candidate**. It is **not** 100% complete.
+This increment is **PASS with documented leftovers**. Classification remains **PRODUCTION READY CANDIDATE**. It is **not** 100% Master Spec.
