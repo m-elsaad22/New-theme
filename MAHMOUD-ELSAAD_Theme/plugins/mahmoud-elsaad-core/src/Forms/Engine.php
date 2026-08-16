@@ -348,7 +348,11 @@ class Engine {
 			self::notify_email( $lead_id, $clean, $settings );
 		}
 		if ( ! empty( $settings['webhook'] ) && ! empty( $settings['webhook_url'] ) ) {
-			self::notify_webhook( (string) $settings['webhook_url'], $lead_id, $clean );
+			if ( self::webhook_allowed( (string) $settings['webhook_url'] ) ) {
+				self::notify_webhook( (string) $settings['webhook_url'], $lead_id, $clean );
+			} else {
+				Logger::log( 'forms', 'Webhook blocked', array( 'reason' => 'ssrf' ) );
+			}
 		}
 
 		Logger::log( 'forms', 'Form submitted', array( 'form_id' => $form_id, 'lead_id' => $lead_id ) );
@@ -400,7 +404,27 @@ class Engine {
 				'error'    => $bag['error'][ $fid ] ?? UPLOAD_ERR_NO_FILE,
 				'size'     => $bag['size'][ $fid ] ?? 0,
 			);
-			$uploaded = wp_handle_upload( $file, array( 'test_form' => false ) );
+			$allowed = apply_filters(
+				'mes_form_upload_mimes',
+				array(
+					'jpg|jpeg|jpe' => 'image/jpeg',
+					'png'          => 'image/png',
+					'gif'          => 'image/gif',
+					'webp'         => 'image/webp',
+					'pdf'          => 'application/pdf',
+				)
+			);
+			$check = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'], $allowed );
+			if ( empty( $check['ext'] ) || empty( $check['type'] ) ) {
+				return new \WP_Error( 'mes_file', 'File type not allowed' );
+			}
+			$uploaded = wp_handle_upload(
+				$file,
+				array(
+					'test_form' => false,
+					'mimes'     => $allowed,
+				)
+			);
 			if ( isset( $uploaded['error'] ) ) {
 				return new \WP_Error( 'mes_file', (string) $uploaded['error'] );
 			}
@@ -437,6 +461,48 @@ class Engine {
 	 * @param int                  $lead_id Lead ID.
 	 * @param array<string, mixed> $data Data.
 	 */
+	/**
+	 * Allow only http(s) webhooks that are not metadata/link-local targets.
+	 */
+	public static function webhook_allowed( string $url ): bool {
+		$url = esc_url_raw( $url );
+		$parts = wp_parse_url( $url );
+		if ( empty( $parts['scheme'] ) || empty( $parts['host'] ) ) {
+			return false;
+		}
+		if ( ! in_array( strtolower( (string) $parts['scheme'] ), array( 'http', 'https' ), true ) ) {
+			return false;
+		}
+		$host = strtolower( (string) $parts['host'] );
+		if ( in_array( $host, array( 'metadata.google.internal', 'metadata.google.com' ), true ) ) {
+			return false;
+		}
+		$ips = array();
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			$ips[] = $host;
+		} else {
+			$resolved = gethostbynamel( $host );
+			$ips      = is_array( $resolved ) ? $resolved : array();
+		}
+		if ( array() === $ips ) {
+			return false;
+		}
+		foreach ( $ips as $ip ) {
+			if ( '169.254.169.254' === $ip || '0.0.0.0' === $ip ) {
+				return false;
+			}
+			$flags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+			$local_ok = apply_filters( 'mes_webhook_allow_loopback', defined( 'WP_DEBUG' ) && WP_DEBUG );
+			if ( $local_ok && ( '127.0.0.1' === $ip || '::1' === $ip ) ) {
+				continue;
+			}
+			if ( ! filter_var( $ip, FILTER_VALIDATE_IP, $flags ) ) {
+				return false;
+			}
+		}
+		return (bool) apply_filters( 'mes_webhook_url_allowed', true, $url );
+	}
+
 	private static function notify_webhook( string $url, int $lead_id, array $data ): void {
 		wp_remote_post(
 			$url,

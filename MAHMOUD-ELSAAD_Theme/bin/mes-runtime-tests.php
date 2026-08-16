@@ -106,7 +106,14 @@ $home_body = (string) wp_remote_retrieve_body( $http( home_url( '/' ) ) );
 mes_t( 'visual_nodes', false !== strpos( $home_body, 'data-mes-node="' ) );
 mes_t( 'schema_jsonld', false !== strpos( $home_body, 'application/ld+json' ) || false !== strpos( $home_body, 'ld+json' ) );
 mes_t( 'rank_math_class', class_exists( '\\MahmoudElsaad\\Core\\SEO\\RankMath' ) );
-mes_t( 'rank_math_inactive_here', ! \MahmoudElsaad\Core\SEO\RankMath::active() );
+$rm_active = \MahmoudElsaad\Core\SEO\RankMath::active();
+$defer_rm  = ! empty( \MahmoudElsaad\Core\Support\Options::get( 'mes_seo_settings', array() )['defer_to_rank_math'] );
+$mes_emit  = (bool) apply_filters( 'mes_schema_should_emit', true );
+if ( $rm_active && $defer_rm ) {
+	mes_t( 'rank_math_compat', false === $mes_emit, 'Rank Math active; MES schema deferred' );
+} else {
+	mes_t( 'rank_math_compat', true === $mes_emit, $rm_active ? 'Rank Math active but defer off' : 'Rank Math inactive; MES emits' );
+}
 mes_t( 'tracking_js', false !== strpos( $home_body, 'tracking.js' ) || false !== strpos( $home_body, 'mesFront' ) );
 
 $contact = \MahmoudElsaad\Core\Forms\Engine::render( 'contact' );

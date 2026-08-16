@@ -64,10 +64,21 @@ class Registry {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => $provider, 'code' => $response->get_error_code() ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => $provider, 'status' => $code ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
 		}
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		return (string) ( $body['choices'][0]['message']['content'] ?? \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt ) );
+		$text = (string) ( $body['choices'][0]['message']['content'] ?? '' );
+		if ( '' === trim( $text ) ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => $provider, 'status' => $code ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
+		}
+		return $text;
 	}
 
 	/**
@@ -109,19 +120,32 @@ class Registry {
 	 * @param string $prompt Prompt.
 	 */
 	private static function gemini( string $key, string $prompt ): string {
-		$url      = add_query_arg( 'key', $key, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent' );
 		$response = wp_remote_post(
-			$url,
+			'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
 			array(
 				'timeout' => 45,
-				'headers' => array( 'Content-Type' => 'application/json' ),
+				'headers' => array(
+					'Content-Type'   => 'application/json',
+					'x-goog-api-key' => $key,
+				),
 				'body'    => wp_json_encode( array( 'contents' => array( array( 'parts' => array( array( 'text' => $prompt ) ) ) ) ) ),
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			return $prompt;
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => 'gemini', 'code' => $response->get_error_code() ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => 'gemini', 'status' => $code ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
 		}
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		return (string) ( $body['candidates'][0]['content']['parts'][0]['text'] ?? $prompt );
+		$text = (string) ( $body['candidates'][0]['content']['parts'][0]['text'] ?? '' );
+		if ( '' === trim( $text ) ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => 'gemini', 'status' => $code ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+		}
+		return $text;
 	}
 }

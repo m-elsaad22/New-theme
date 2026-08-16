@@ -83,7 +83,7 @@ class Logger {
 				$context[ $key ] = self::redact( $value );
 				continue;
 			}
-			if ( false !== strpos( $k, 'key' ) || false !== strpos( $k, 'secret' ) || false !== strpos( $k, 'token' ) || false !== strpos( $k, 'password' ) ) {
+			if ( false !== strpos( $k, 'key' ) || false !== strpos( $k, 'secret' ) || false !== strpos( $k, 'token' ) || false !== strpos( $k, 'password' ) || false !== strpos( $k, 'authorization' ) || false !== strpos( $k, 'bearer' ) ) {
 				$context[ $key ] = '[redacted]';
 			}
 		}
