@@ -28,6 +28,13 @@ function mes_render_whatsapp_button( array $args = array() ): string {
 }
 
 /**
+ * Trusted homepage map iframe from Control Center configuration.
+ */
+function mes_render_map(): string {
+	return \MahmoudElsaad\Core\Helpers\Contact::render_map();
+}
+
+/**
  * Brand name from settings.
  */
 function mes_brand_name(): string {

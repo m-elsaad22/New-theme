@@ -154,4 +154,91 @@ class Contact {
 		$html .= '</a>';
 		return $html;
 	}
+
+	/**
+	 * Extract a trusted HTTPS map embed URL from admin-controlled input.
+	 *
+	 * Accepts a Google Maps or OpenStreetMap embed URL, or an iframe whose src
+	 * is one of those hosts. Arbitrary HTML, javascript:, data:, and other
+	 * origins are rejected. The stored value is a URL, never raw markup.
+	 *
+	 * @param string $raw Raw Control Center / migration input.
+	 */
+	public static function map_src( string $raw ): string {
+		$raw = trim( wp_unslash( $raw ) );
+		if ( '' === $raw ) {
+			return '';
+		}
+
+		$candidate = $raw;
+		if ( preg_match( '/<iframe\b[^>]*\bsrc\s*=\s*([\'"])(.*?)\1/i', $raw, $m ) ) {
+			$candidate = html_entity_decode( (string) $m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		} elseif ( preg_match( '/<\s*iframe\b/i', $raw ) ) {
+			return '';
+		}
+
+		$candidate = trim( str_replace( array( "\0", "\r", "\n", "\t" ), '', $candidate ) );
+		if ( '' === $candidate ) {
+			return '';
+		}
+
+		$parsed = wp_parse_url( $candidate );
+		if ( ! is_array( $parsed ) ) {
+			return '';
+		}
+		if ( 'https' !== strtolower( (string) ( $parsed['scheme'] ?? '' ) ) ) {
+			return '';
+		}
+
+		$host = strtolower( (string) ( $parsed['host'] ?? '' ) );
+		$path = (string) ( $parsed['path'] ?? '' );
+		$ok   = false;
+
+		$google_hosts = array( 'www.google.com', 'google.com', 'maps.google.com', 'www.google.ae', 'maps.google.ae' );
+		if ( in_array( $host, $google_hosts, true ) && 0 === strpos( $path, '/maps' ) ) {
+			$ok = true;
+		}
+
+		$osm_hosts = array( 'www.openstreetmap.org', 'openstreetmap.org' );
+		if ( in_array( $host, $osm_hosts, true ) && false !== strpos( $path, '/export/embed' ) ) {
+			$ok = true;
+		}
+
+		if ( ! $ok ) {
+			return '';
+		}
+
+		$safe = esc_url_raw( $candidate, array( 'https' ) );
+		if ( ! $safe || 0 !== strpos( $safe, 'https://' ) ) {
+			return '';
+		}
+
+		$again = wp_parse_url( $safe );
+		if ( ! is_array( $again ) || 'https' !== strtolower( (string) ( $again['scheme'] ?? '' ) ) ) {
+			return '';
+		}
+		$safe_host = strtolower( (string) ( $again['host'] ?? '' ) );
+		if ( $safe_host !== $host ) {
+			return '';
+		}
+
+		return $safe;
+	}
+
+	/**
+	 * Trusted homepage map iframe from stored admin configuration.
+	 */
+	public static function render_map(): string {
+		$settings = Options::get( 'mes_contact_settings', array() );
+		$src      = self::map_src( (string) ( $settings['map_embed'] ?? '' ) );
+		if ( '' === $src ) {
+			return '';
+		}
+
+		return sprintf(
+			'<iframe class="fmap-frame" src="%s" title="%s" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-popups" allowfullscreen></iframe>',
+			esc_url( $src ),
+			esc_attr__( 'Headquarters map', 'mahmoud-elsaad-core' )
+		);
+	}
 }

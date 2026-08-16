@@ -93,13 +93,16 @@ $social  = $contact['social'] ?? array();
 				?>
 			</div>
 		</div>
-		<?php if ( ! empty( $contact['map_embed'] ) ) : ?>
+		<?php
+		$map_html = function_exists( 'mes_render_map' ) ? mes_render_map() : '';
+		if ( $map_html ) :
+			?>
 			<div class="fmap">
 				<div class="fmap-addr-row">
 					<i class="fas fa-location-dot"></i>
 					<div><b><?php esc_html_e( 'Headquarters', 'mahmoud-elsaad' ); ?></b><span><?php echo esc_html( $contact['address'] ?? '' ); ?></span></div>
 				</div>
-				<?php echo wp_kses_post( $contact['map_embed'] ); ?>
+				<?php echo $map_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Contact::render_map() builds a sandboxed allowlisted iframe. ?>
 			</div>
 		<?php endif; ?>
 		<div class="fbottom">

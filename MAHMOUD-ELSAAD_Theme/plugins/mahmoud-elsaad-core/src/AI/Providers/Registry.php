@@ -147,42 +147,52 @@ class Registry {
 	 * @param string $prompt Prompt.
 	 */
 	private static function gemini( string $key, string $prompt ): string {
-		$response = wp_remote_post(
-			'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-			array(
-				'timeout' => 45,
-				'headers' => array(
-					'Content-Type'   => 'application/json',
-					'x-goog-api-key' => $key,
-				),
-				'body'    => wp_json_encode( array( 'contents' => array( array( 'parts' => array( array( 'text' => $prompt ) ) ) ) ) ),
-			)
-		);
-		if ( is_wp_error( $response ) ) {
-			self::$last_error = (string) $response->get_error_code();
-			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => 'gemini', 'code' => $response->get_error_code() ) );
-			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+		$models = array( 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest' );
+		$body   = wp_json_encode( array( 'contents' => array( array( 'parts' => array( array( 'text' => $prompt ) ) ) ) ) );
+		foreach ( $models as $model ) {
+			$response = wp_remote_post(
+				'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( $model ) . ':generateContent',
+				array(
+					'timeout' => 45,
+					'headers' => array(
+						'Content-Type'   => 'application/json',
+						'x-goog-api-key' => $key,
+					),
+					'body'    => $body,
+				)
+			);
+			if ( is_wp_error( $response ) ) {
+				self::$last_error  = (string) $response->get_error_code();
+				self::$last_status = 0;
+				\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => 'gemini', 'code' => $response->get_error_code() ) );
+				return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+			}
+			$code              = (int) wp_remote_retrieve_response_code( $response );
+			self::$last_status = $code;
+			$raw               = (string) wp_remote_retrieve_body( $response );
+			if ( $code >= 400 ) {
+				self::$last_error = 'http';
+				\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => 'gemini', 'status' => $code ) );
+				if ( 404 === $code ) {
+					continue;
+				}
+				return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+			}
+			$decoded = json_decode( $raw, true );
+			if ( '' !== $raw && null === $decoded ) {
+				self::$last_error = 'malformed';
+				\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider malformed response', array( 'provider' => 'gemini', 'status' => $code ) );
+				return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+			}
+			$text = (string) ( $decoded['candidates'][0]['content']['parts'][0]['text'] ?? '' );
+			if ( '' === trim( $text ) ) {
+				self::$last_error = 'empty';
+				\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => 'gemini', 'status' => $code ) );
+				return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+			}
+			self::$last_error = '';
+			return $text;
 		}
-		$code              = (int) wp_remote_retrieve_response_code( $response );
-		self::$last_status = $code;
-		$raw               = (string) wp_remote_retrieve_body( $response );
-		if ( $code >= 400 ) {
-			self::$last_error = 'http';
-			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => 'gemini', 'status' => $code ) );
-			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
-		}
-		$body = json_decode( $raw, true );
-		if ( '' !== $raw && null === $body ) {
-			self::$last_error = 'malformed';
-			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider malformed response', array( 'provider' => 'gemini', 'status' => $code ) );
-			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
-		}
-		$text = (string) ( $body['candidates'][0]['content']['parts'][0]['text'] ?? '' );
-		if ( '' === trim( $text ) ) {
-			self::$last_error = 'empty';
-			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => 'gemini', 'status' => $code ) );
-			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
-		}
-		return $text;
+		return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
 	}
 }

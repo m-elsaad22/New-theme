@@ -10,6 +10,7 @@ namespace MahmoudElsaad\Core\API;
 use MahmoudElsaad\Core\AI\Manager as AIManager;
 use MahmoudElsaad\Core\Demo\Content as DemoContent;
 use MahmoudElsaad\Core\Forms\Repository as FormRepository;
+use MahmoudElsaad\Core\Helpers\Contact;
 use MahmoudElsaad\Core\LegacyMigration\Migrator;
 use MahmoudElsaad\Core\Relations\ServiceCity;
 use MahmoudElsaad\Core\Support\Capabilities;
@@ -306,8 +307,8 @@ class Rest {
 		}
 		$existing = Options::get( $group, array() );
 		$clean    = self::sanitize_deep( $params );
-		if ( 'mes_contact_settings' === $group && ! empty( $params['map_embed'] ) ) {
-			$clean['map_embed'] = wp_kses_post( (string) $params['map_embed'] );
+		if ( 'mes_contact_settings' === $group && array_key_exists( 'map_embed', $params ) ) {
+			$clean['map_embed'] = Contact::map_src( (string) $params['map_embed'] );
 		}
 		if ( is_array( $existing ) ) {
 			$clean = array_replace_recursive( $existing, $clean );

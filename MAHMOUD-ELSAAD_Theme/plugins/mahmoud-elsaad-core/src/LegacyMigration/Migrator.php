@@ -99,7 +99,7 @@ class Migrator {
 			}
 		}
 		$rows['theme_options'] = self::row( 'theme options', $opt_src, $opt_src, 0, 0, 0, 'Mapped into mes_brand_settings / mes_contact_settings. API keys are never copied.' );
-		$rows['contact_options'] = self::row( 'contact options', (int) (bool) get_option( 'company__mail' ) + (int) (bool) get_option( 'company__adress' ), 0, 0, 0, 0, 'company__mail → email; company__adress → address; company__map_code → map_embed.' );
+		$rows['contact_options'] = self::row( 'contact options', (int) (bool) get_option( 'company__mail' ) + (int) (bool) get_option( 'company__adress' ), 0, 0, 0, 0, 'company__mail → email; company__adress → address; company__map_code → trusted map URL (Google Maps / OSM embed only).' );
 		$rows['phone'] = self::row( 'phone', (int) (bool) get_option( 'phonenumber' ), 0, 0, 0, 0, 'phonenumber → mes_contact_settings.phones (deduped).' );
 		$rows['whatsapp'] = self::row( 'whatsapp', (int) (bool) get_option( 'whatsapp_number' ), 0, 0, 0, 0, 'whatsapp_number → mes_contact_settings.whatsapps (deduped).' );
 		$rows['schema'] = self::row( 'schema-related data', 0, 0, 0, 0, 0, 'No legacy schema CPT. Rank Math / MES schema is generated at runtime from migrated content.' );
@@ -597,8 +597,11 @@ class Migrator {
 		}
 		$map = get_option( 'company__map_code' );
 		if ( $map && empty( $contact['map_embed'] ) ) {
-			$contact['map_embed'] = wp_kses_post( (string) $map );
-			++$mapped;
+			$src = \MahmoudElsaad\Core\Helpers\Contact::map_src( (string) $map );
+			if ( $src ) {
+				$contact['map_embed'] = $src;
+				++$mapped;
+			}
 		}
 
 		$secret_keys = array( 'scrapestack_key', 'api_key', 'openai_key', 'gemini_key' );

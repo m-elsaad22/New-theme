@@ -316,7 +316,8 @@ class Views {
 		echo '<input type="hidden" name="whatsapps[0][primary]" value="1" />';
 		echo '<label>' . esc_html__( 'Email', 'mahmoud-elsaad-core' ) . '<input type="email" name="email" value="' . esc_attr( $contact['email'] ?? '' ) . '" /></label>';
 		echo '<label>' . esc_html__( 'Address', 'mahmoud-elsaad-core' ) . '<input type="text" name="address" value="' . esc_attr( $contact['address'] ?? '' ) . '" /></label>';
-		echo '<label>' . esc_html__( 'Map embed', 'mahmoud-elsaad-core' ) . '<textarea name="map_embed" rows="3">' . esc_textarea( $contact['map_embed'] ?? '' ) . '</textarea></label>';
+		echo '<label>' . esc_html__( 'Map embed', 'mahmoud-elsaad-core' ) . '<textarea name="map_embed" rows="3" placeholder="https://www.google.com/maps/embed?pb=…">' . esc_textarea( $contact['map_embed'] ?? '' ) . '</textarea></label>';
+		echo '<p class="description">' . esc_html__( 'Paste a Google Maps or OpenStreetMap embed URL, or an iframe from those hosts. Only the HTTPS src is stored. Other HTML is discarded.', 'mahmoud-elsaad-core' ) . '</p>';
 		foreach ( array( 'facebook', 'instagram', 'tiktok', 'youtube', 'linkedin', 'x', 'snapchat', 'telegram' ) as $net ) {
 			echo '<label>' . esc_html( ucfirst( $net ) ) . '<input type="url" name="social[' . esc_attr( $net ) . ']" value="' . esc_attr( $social[ $net ] ?? '' ) . '" /></label>';
 		}
