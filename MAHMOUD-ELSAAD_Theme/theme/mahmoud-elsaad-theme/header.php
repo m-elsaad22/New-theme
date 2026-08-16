@@ -49,7 +49,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</nav>
 		<div class="nav-cta">
 			<button class="icon-btn" type="button" data-mes-search aria-label="<?php esc_attr_e( 'Search', 'mahmoud-elsaad' ); ?>"><i class="fas fa-search"></i></button>
-			<button class="icon-btn ham" type="button" onclick="toggleMob(true)" aria-label="<?php esc_attr_e( 'Menu', 'mahmoud-elsaad' ); ?>"><span></span><span></span><span></span></button>
+			<button class="icon-btn ham" type="button" onclick="toggleMob(true)" aria-label="<?php esc_attr_e( 'Menu', 'mahmoud-elsaad' ); ?>" aria-expanded="false" aria-controls="mob"><span></span><span></span><span></span></button>
 		</div>
 	</div>
 </header>

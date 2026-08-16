@@ -115,23 +115,29 @@ class Contact {
 	public static function render_button( string $type, array $args = array() ): string {
 		$number    = $args['number'] ?? ( 'whatsapp' === $type ? self::whatsapp() : self::phone() );
 		$placement = sanitize_key( $args['placement'] ?? 'content' );
-		$label     = $args['label'] ?? ( 'whatsapp' === $type ? __( 'WhatsApp', 'mahmoud-elsaad-core' ) : __( 'Call', 'mahmoud-elsaad-core' ) );
-		$class     = $args['class'] ?? ( 'whatsapp' === $type ? 'btn btn-wa' : 'btn btn-call' );
-		$icon      = $args['icon'] ?? ( 'whatsapp' === $type ? 'fab fa-whatsapp' : 'fas fa-phone' );
-		$href      = 'whatsapp' === $type ? self::wa_href( $number, (string) ( $args['text'] ?? '' ) ) : self::tel_href( $number );
+		$default   = 'whatsapp' === $type ? __( 'WhatsApp', 'mahmoud-elsaad-core' ) : __( 'Call', 'mahmoud-elsaad-core' );
+		$label     = array_key_exists( 'label', $args ) ? (string) $args['label'] : $default;
+		$aria      = (string) ( $args['aria'] ?? $args['aria-label'] ?? '' );
+		if ( '' === $aria ) {
+			$aria = '' !== $label ? $label : $default;
+		}
+		$class = $args['class'] ?? ( 'whatsapp' === $type ? 'btn btn-wa' : 'btn btn-call' );
+		$icon  = $args['icon'] ?? ( 'whatsapp' === $type ? 'fab fa-whatsapp' : 'fas fa-phone' );
+		$href  = 'whatsapp' === $type ? self::wa_href( $number, (string) ( $args['text'] ?? '' ) ) : self::tel_href( $number );
 
 		if ( ! $href ) {
 			return '';
 		}
 
 		$attrs = array(
-			'href'                => $href,
-			'class'               => $class . ' mes-track-contact',
-			'data-mes-type'       => $type,
-			'data-mes-number'     => $number,
-			'data-mes-placement'  => $placement,
-			'data-mes-post'       => (string) get_queried_object_id(),
-			'rel'                 => 'noopener nofollow',
+			'href'               => $href,
+			'class'              => $class . ' mes-track-contact',
+			'data-mes-type'      => $type,
+			'data-mes-number'    => $number,
+			'data-mes-placement' => $placement,
+			'data-mes-post'      => (string) get_queried_object_id(),
+			'rel'                => 'noopener nofollow',
+			'aria-label'         => $aria,
 		);
 		if ( 'whatsapp' === $type ) {
 			$attrs['target'] = '_blank';
@@ -141,7 +147,11 @@ class Contact {
 		foreach ( $attrs as $k => $v ) {
 			$html .= ' ' . esc_attr( $k ) . '="' . esc_attr( $v ) . '"';
 		}
-		$html .= '><i class="' . esc_attr( $icon ) . '" aria-hidden="true"></i> ' . esc_html( $label ) . '</a>';
+		$html .= '><i class="' . esc_attr( $icon ) . '" aria-hidden="true"></i>';
+		if ( '' !== $label ) {
+			$html .= ' ' . esc_html( $label );
+		}
+		$html .= '</a>';
 		return $html;
 	}
 }

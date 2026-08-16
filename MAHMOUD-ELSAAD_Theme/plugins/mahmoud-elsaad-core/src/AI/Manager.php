@@ -58,7 +58,44 @@ class Manager {
 
 		$provider = sanitize_key( $settings['provider'] ?? 'openai' );
 		$text     = Providers\Registry::complete( $provider, $key, $prompt, $task );
+		$error    = Providers\Registry::$last_error;
+		$status   = Providers\Registry::$last_status;
+		if ( $error || $status >= 400 ) {
+			return rest_ensure_response(
+				array(
+					'ok'       => false,
+					'text'     => $text,
+					'fallback' => $text,
+					'message'  => self::user_error( $status, $error ),
+				)
+			);
+		}
 		return rest_ensure_response( array( 'ok' => true, 'text' => $text ) );
+	}
+
+	/**
+	 * User-facing provider error. Never includes the API key.
+	 *
+	 * @param int    $status HTTP status.
+	 * @param string $error  Internal error code.
+	 */
+	private static function user_error( int $status, string $error ): string {
+		if ( 401 === $status || 403 === $status ) {
+			return __( 'The AI key was rejected. Check the key in Control Center → AI.', 'mahmoud-elsaad-core' );
+		}
+		if ( 429 === $status ) {
+			return __( 'The AI provider rate-limited this request. Try again shortly.', 'mahmoud-elsaad-core' );
+		}
+		if ( $status >= 500 ) {
+			return __( 'The AI provider is unavailable. A local draft was used instead.', 'mahmoud-elsaad-core' );
+		}
+		if ( 'timeout' === $error || 'http_request_failed' === $error ) {
+			return __( 'The AI request timed out. A local draft was used instead.', 'mahmoud-elsaad-core' );
+		}
+		if ( 'empty' === $error || 'malformed' === $error ) {
+			return __( 'The AI provider returned an empty or invalid response. A local draft was used instead.', 'mahmoud-elsaad-core' );
+		}
+		return __( 'The AI provider could not complete this request. A local draft was used instead.', 'mahmoud-elsaad-core' );
 	}
 
 	/**

@@ -443,14 +443,57 @@ class Engine {
 	private static function notify_email( int $lead_id, array $data, array $settings ): void {
 		$to = sanitize_email( (string) ( $settings['notify_email'] ?? '' ) );
 		if ( ! $to ) {
-			$to = (string) get_option( 'admin_email' );
+			$to = sanitize_email( (string) get_option( 'admin_email' ) );
 		}
-		$subject = sprintf( /* translators: %d lead id */ __( 'New lead #%d', 'mahmoud-elsaad-core' ), $lead_id ?: 0 );
-		$body    = wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT );
-		if ( ! empty( $settings['whatsapp'] ) && ! empty( $settings['whatsapp_number'] ) ) {
-			$body .= "\n\nWhatsApp: " . $settings['whatsapp_number'];
+		if ( ! $to || ! is_email( $to ) ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'forms', 'Email notification skipped: no valid recipient', array( 'lead_id' => $lead_id ) );
+			return;
 		}
-		wp_mail( $to, $subject, (string) $body );
+
+		$type    = sanitize_key( (string) ( $settings['form_type'] ?? 'lead' ) );
+		$blog    = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+		$subject = sprintf(
+			/* translators: 1: site name, 2: form type, 3: lead id */
+			__( '[%1$s] New %2$s lead #%3$d', 'mahmoud-elsaad-core' ),
+			$blog,
+			$type,
+			$lead_id ?: 0
+		);
+		$subject = str_replace( array( "\r", "\n" ), '', $subject );
+
+		$skip = array( 'nonce', 'mes_form_nonce', 'mes_hp', 'action', 'form_id', '_wp_http_referer', 'mes_form_id' );
+		$lines = array(
+			'Lead ID: ' . absint( $lead_id ),
+			'Form: ' . sanitize_text_field( (string) ( $settings['title'] ?? $type ) ),
+			'Type: ' . $type,
+		);
+		foreach ( $data as $key => $value ) {
+			$key = sanitize_key( (string) $key );
+			if ( in_array( $key, $skip, true ) || str_starts_with( $key, '_' ) ) {
+				continue;
+			}
+			if ( is_array( $value ) ) {
+				$value = implode( ', ', array_map( 'sanitize_text_field', array_map( 'strval', $value ) ) );
+			} else {
+				$value = sanitize_textarea_field( (string) $value );
+			}
+			$lines[] = ucfirst( str_replace( '_', ' ', $key ) ) . ': ' . $value;
+		}
+		$body = implode( "\n", $lines );
+
+		$from_email = sanitize_email( (string) get_option( 'admin_email' ) );
+		$from_name  = str_replace( array( "\r", "\n" ), '', $blog );
+		$headers    = array(
+			'Content-Type: text/plain; charset=UTF-8',
+		);
+		if ( $from_email && is_email( $from_email ) ) {
+			$headers[] = sprintf( 'From: %s <%s>', $from_name, $from_email );
+		}
+
+		$sent = wp_mail( $to, $subject, $body, $headers );
+		if ( ! $sent ) {
+			\MahmoudElsaad\Core\Support\Logger::log( 'forms', 'Email notification failed', array( 'lead_id' => $lead_id ) );
+		}
 	}
 
 	/**

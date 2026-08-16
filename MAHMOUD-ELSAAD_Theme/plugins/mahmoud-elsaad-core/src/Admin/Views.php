@@ -372,10 +372,10 @@ class Views {
 	private static function seo(): void {
 		$seo = Options::get( 'mes_seo_settings', array() );
 		echo '<div class="mes-cc-card"><h1>' . esc_html__( 'SEO', 'mahmoud-elsaad-core' ) . '</h1>';
-		echo '<p>' . ( RankMath::active() ? esc_html__( 'Rank Math is active. Internal schema is deferred by default.', 'mahmoud-elsaad-core' ) : esc_html__( 'Rank Math is not active. Internal schema/meta are used.', 'mahmoud-elsaad-core' ) ) . '</p>';
+		echo '<p>' . ( RankMath::active() ? esc_html__( 'Rank Math is active. Rank Math owns Article, BreadcrumbList, Organization, WebSite, canonical, title, and robots. MAHMOUD Core adds LocalBusiness, Service, FAQPage, and Service×City only when those types are missing from Rank Math’s graph.', 'mahmoud-elsaad-core' ) : esc_html__( 'Rank Math is not active. Internal schema/meta are used.', 'mahmoud-elsaad-core' ) ) . '</p>';
 		echo '<form id="mes-seo-form" class="mes-cc-form" data-group="seo_settings">';
 		echo '<label class="mes-cc-check"><input type="checkbox" name="emit_schema" value="1"' . checked( ! empty( $seo['emit_schema'] ), true, false ) . ' /> ' . esc_html__( 'Emit JSON-LD', 'mahmoud-elsaad-core' ) . '</label>';
-		echo '<label class="mes-cc-check"><input type="checkbox" name="defer_to_rank_math" value="1"' . checked( ! empty( $seo['defer_to_rank_math'] ), true, false ) . ' /> ' . esc_html__( 'Defer schema to Rank Math when present', 'mahmoud-elsaad-core' ) . '</label>';
+		echo '<label class="mes-cc-check"><input type="checkbox" name="defer_to_rank_math" value="1"' . checked( ! empty( $seo['defer_to_rank_math'] ), true, false ) . ' /> ' . esc_html__( 'Defer Rank Math–owned types; inject missing Service / LocalBusiness / FAQ only', 'mahmoud-elsaad-core' ) . '</label>';
 		echo '<label class="mes-cc-check"><input type="checkbox" name="language_prefix" value="1"' . checked( ! empty( $seo['language_prefix'] ), true, false ) . ' /> ' . esc_html__( 'Language URL prefixes', 'mahmoud-elsaad-core' ) . '</label>';
 		echo '<button class="mes-cc-btn" type="submit">' . esc_html__( 'Save', 'mahmoud-elsaad-core' ) . '</button></form></div>';
 	}

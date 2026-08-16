@@ -57,7 +57,7 @@ $social  = $contact['social'] ?? array();
 				</div>
 			</div>
 			<div class="fcol">
-				<h4><?php esc_html_e( 'Services', 'mahmoud-elsaad' ); ?></h4>
+				<h3><?php esc_html_e( 'Services', 'mahmoud-elsaad' ); ?></h3>
 				<ul>
 					<?php
 					$services = get_posts( array( 'post_type' => 'service', 'posts_per_page' => 6 ) );
@@ -68,7 +68,7 @@ $social  = $contact['social'] ?? array();
 				</ul>
 			</div>
 			<div class="fcol">
-				<h4><?php esc_html_e( 'Cities', 'mahmoud-elsaad' ); ?></h4>
+				<h3><?php esc_html_e( 'Cities', 'mahmoud-elsaad' ); ?></h3>
 				<ul>
 					<?php
 					$cities = get_posts( array( 'post_type' => 'mes_city', 'posts_per_page' => 7 ) );
@@ -79,7 +79,7 @@ $social  = $contact['social'] ?? array();
 				</ul>
 			</div>
 			<div class="fcol">
-				<h4><?php esc_html_e( 'Quick links', 'mahmoud-elsaad' ); ?></h4>
+				<h3><?php esc_html_e( 'Quick links', 'mahmoud-elsaad' ); ?></h3>
 				<?php
 				wp_nav_menu(
 					array(

@@ -13,6 +13,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Registry {
 	/**
+	 * Last HTTP status from the provider (0 on transport error).
+	 *
+	 * @var int
+	 */
+	public static $last_status = 0;
+
+	/**
+	 * Last error token (never includes secrets).
+	 *
+	 * @var string
+	 */
+	public static $last_error = '';
+
+	/**
 	 * Dispatch completion.
 	 *
 	 * @param string $provider Provider id.
@@ -21,6 +35,8 @@ class Registry {
 	 * @param string $task Task.
 	 */
 	public static function complete( string $provider, string $key, string $prompt, string $task ): string {
+		self::$last_status = 0;
+		self::$last_error  = '';
 		$map = array(
 			'openai'      => 'https://api.openai.com/v1/chat/completions',
 			'openrouter'  => 'https://openrouter.ai/api/v1/chat/completions',
@@ -41,6 +57,7 @@ class Registry {
 			$endpoint = esc_url_raw( $settings['endpoint'] );
 		}
 		if ( ! $endpoint ) {
+			self::$last_error = 'empty';
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
 		}
 
@@ -64,17 +81,27 @@ class Registry {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
+			self::$last_error = (string) $response->get_error_code();
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => $provider, 'code' => $response->get_error_code() ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
 		}
-		$code = (int) wp_remote_retrieve_response_code( $response );
+		$code              = (int) wp_remote_retrieve_response_code( $response );
+		self::$last_status = $code;
+		$raw               = (string) wp_remote_retrieve_body( $response );
 		if ( $code >= 400 ) {
+			self::$last_error = 'http';
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => $provider, 'status' => $code ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
 		}
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$body = json_decode( $raw, true );
+		if ( '' !== $raw && null === $body ) {
+			self::$last_error = 'malformed';
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider malformed response', array( 'provider' => $provider, 'status' => $code ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
+		}
 		$text = (string) ( $body['choices'][0]['message']['content'] ?? '' );
 		if ( '' === trim( $text ) ) {
+			self::$last_error = 'empty';
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => $provider, 'status' => $code ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( $task, $prompt );
 		}
@@ -132,17 +159,27 @@ class Registry {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
+			self::$last_error = (string) $response->get_error_code();
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider transport error', array( 'provider' => 'gemini', 'code' => $response->get_error_code() ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
 		}
-		$code = (int) wp_remote_retrieve_response_code( $response );
+		$code              = (int) wp_remote_retrieve_response_code( $response );
+		self::$last_status = $code;
+		$raw               = (string) wp_remote_retrieve_body( $response );
 		if ( $code >= 400 ) {
+			self::$last_error = 'http';
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider HTTP error', array( 'provider' => 'gemini', 'status' => $code ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
 		}
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$body = json_decode( $raw, true );
+		if ( '' !== $raw && null === $body ) {
+			self::$last_error = 'malformed';
+			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider malformed response', array( 'provider' => 'gemini', 'status' => $code ) );
+			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
+		}
 		$text = (string) ( $body['candidates'][0]['content']['parts'][0]['text'] ?? '' );
 		if ( '' === trim( $text ) ) {
+			self::$last_error = 'empty';
 			\MahmoudElsaad\Core\Support\Logger::log( 'ai', 'Provider empty response', array( 'provider' => 'gemini', 'status' => $code ) );
 			return \MahmoudElsaad\Core\AI\Manager::local_fallback( 'title', $prompt );
 		}

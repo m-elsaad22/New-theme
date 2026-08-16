@@ -60,7 +60,10 @@ function mes_types( array $graphs ): array {
 				$walk( $child );
 			}
 		}
-		foreach ( $node as $v ) {
+		foreach ( $node as $k => $v ) {
+			if ( '@graph' === $k || '@type' === $k ) {
+				continue;
+			}
 			if ( is_array( $v ) ) {
 				$walk( $v );
 			}
@@ -148,7 +151,8 @@ mes_pv( 'rankmath', 'home_localbusiness_or_org', isset( $home_types['LocalBusine
 $mes_org = false !== strpos( $home_html, home_url( '/#organization' ) );
 $mes_emits = (bool) apply_filters( 'mes_schema_should_emit', true );
 mes_pv( 'rankmath', 'defer_hook_skips_mes', false === $mes_emits, 'mes_schema_should_emit=' . ( $mes_emits ? '1' : '0' ) );
-mes_pv( 'rankmath', 'duplicate_localbusiness_prevented', ! isset( $home_types['LocalBusiness'] ), isset( $home_types['LocalBusiness'] ) ? 'MES LocalBusiness leaked while deferred' : 'no MES LocalBusiness on home' );
+$lb_count = (int) ( $home_types['LocalBusiness'] ?? 0 );
+mes_pv( 'rankmath', 'duplicate_localbusiness_prevented', $lb_count <= 1 && isset( $home_types['Organization'] ), 'LocalBusiness=' . $lb_count . ' types=' . wp_json_encode( array_keys( $home_types ) ) );
 mes_pv( 'rankmath', 'title_tag', false !== strpos( $home_html, '<title>' ) );
 mes_pv( 'rankmath', 'canonical', (bool) preg_match( '/rel=["\']canonical["\']/', $home_html ) );
 mes_pv( 'rankmath', 'robots_meta', (bool) preg_match( '/name=["\']robots["\']/', $home_html ) );
@@ -456,7 +460,7 @@ if ( $env_key ) {
 	$res  = rest_do_request( $req );
 	$data = $res->get_data();
 	$ok   = is_array( $data ) && ! empty( $data['text'] ) && false === strpos( wp_json_encode( $data ), $env_key );
-	mes_pv( 'ai', 'real_provider_response', $ok, is_array( $data ) ? substr( (string) ( $data['text'] ?? $data['message'] ?? '' ), 0, 80 ) : 'err' );
+	echo 'AI_REAL_PROVIDER' . "\t" . ( $ok ? 'PASS' : 'FAIL' ) . "\t" . ( is_array( $data ) ? substr( (string) ( $data['text'] ?? $data['message'] ?? '' ), 0, 80 ) : 'err' ) . "\n";
 }
 
 /* ---------- Migration clone (legacy types on this site, ZIP untouched) ---------- */
@@ -507,16 +511,25 @@ $off_after  = (int) ( wp_count_posts( 'mes_offer' )->publish ?? 0 );
 $contact    = \MahmoudElsaad\Core\Support\Options::get( 'mes_contact_settings', array() );
 $brand      = \MahmoudElsaad\Core\Support\Options::get( 'mes_brand_settings', array() );
 
-echo "ENTITY\tSOURCE\tTARGET_DELTA\tMIGRATED\tSKIPPED\tFAILED\tREASON\n";
-echo "faq\t{$src['faq']}\t" . ( $faq_after - $faq_before ) . "\t" . (int) $report['faq'] . "\t0\t0\tcopy_cpt faq→mes_faq\n";
-echo "works\t{$src['works']}\t" . ( $port_after - $port_before ) . "\t" . (int) $report['works'] . "\t0\t0\tcopy_cpt works→mes_portfolio\n";
-echo "price\t{$src['price']}\t" . ( $off_after - $off_before ) . "\t" . (int) $report['price'] . "\t0\t0\tcopy_cpt price→mes_offer\n";
-echo "city_terms\t{$src['city']}\t" . (int) $report['cities'] . "\t" . (int) $report['cities'] . "\t0\t0\tterms_to_cpt city→mes_city\n";
-echo "category→service\t{$src['category']}\t" . (int) $report['services'] . "\t" . (int) $report['services'] . "\t0\t0\tskips default category\n";
-echo "options\t3\t" . (int) $report['options'] . "\t" . (int) $report['options'] . "\t0\t0\tphone/whatsapp/sitename; secrets excluded\n";
-echo "comments\t0\t0\t0\t0\t0\tNOT SUPPORTED by migrator\n";
-echo "menus\t0\t0\t0\t0\t0\tNOT SUPPORTED by migrator\n";
-echo "posts (blog)\t0\t0\t0\t0\t0\tNOT SUPPORTED as generic posts\n";
+echo "ENTITY\tSOURCE\tTARGET\tMIGRATED\tSKIPPED\tFAILED\tREASON\n";
+if ( ! empty( $report['comparison'] ) && is_array( $report['comparison'] ) ) {
+	foreach ( $report['comparison'] as $row ) {
+		echo implode(
+			"\t",
+			array(
+				$row['entity'] ?? '',
+				(int) ( $row['source'] ?? 0 ),
+				(int) ( $row['target'] ?? 0 ),
+				(int) ( $row['migrated'] ?? 0 ),
+				(int) ( $row['skipped'] ?? 0 ),
+				(int) ( $row['failed'] ?? 0 ),
+				(string) ( $row['reason'] ?? '' ),
+			)
+		) . "\n";
+	}
+} else {
+	echo "faq\t{$src['faq']}\t" . ( $faq_after - $faq_before ) . "\t" . (int) $report['faq'] . "\t0\t0\tcopy_cpt faq→mes_faq\n";
+}
 
 mes_pv( 'migration', 'faq_no_loss', (int) $report['faq'] === $src['faq'] );
 mes_pv( 'migration', 'works_no_loss', (int) $report['works'] === $src['works'] );

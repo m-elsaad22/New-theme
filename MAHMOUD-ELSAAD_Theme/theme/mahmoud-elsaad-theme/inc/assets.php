@@ -14,7 +14,7 @@ add_action(
 	static function () {
 		wp_enqueue_style(
 			'mes-fonts',
-			'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap',
+			'https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Tajawal:wght@400;700&display=swap',
 			array(),
 			null
 		);

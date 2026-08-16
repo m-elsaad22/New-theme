@@ -5,7 +5,23 @@
 (function () {
   const loader = document.getElementById('loader');
   if (loader) {
-    window.addEventListener('load', () => setTimeout(() => loader.classList.add('out'), 700));
+    const hide = () => {
+      loader.classList.add('out');
+      loader.classList.remove('is-pending');
+    };
+    const showIfSlow = window.setTimeout(() => {
+      if (document.readyState !== 'complete') {
+        loader.classList.add('is-pending');
+      }
+    }, 2000);
+    window.addEventListener('load', () => {
+      window.clearTimeout(showIfSlow);
+      hide();
+    });
+    if (document.readyState === 'complete') {
+      window.clearTimeout(showIfSlow);
+      hide();
+    }
   }
 
   const hdr = document.getElementById('hdr');
@@ -20,21 +36,42 @@
 
   window.toggleMob = function (open) {
     const m = document.getElementById('mob');
-    if (m) m.classList.toggle('open', open);
+    const ham = document.querySelector('.ham');
+    if (m) {
+      m.classList.toggle('open', open);
+      if (open) {
+        const close = m.querySelector('.mob-close');
+        if (close) close.focus();
+      } else if (ham) {
+        ham.focus();
+      }
+    }
+    if (ham) ham.setAttribute('aria-expanded', open ? 'true' : 'false');
   };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.toggleMob(false);
+  });
 
   const box = document.getElementById('particles');
   if (box) {
-    for (let i = 0; i < 22; i++) {
-      const p = document.createElement('span');
-      p.className = 'particle';
-      const s = Math.random() * 4 + 2;
-      p.style.width = p.style.height = s + 'px';
-      p.style.left = Math.random() * 100 + '%';
-      p.style.top = Math.random() * 100 + '%';
-      p.style.opacity = Math.random() * 0.5 + 0.2;
-      p.style.animationDelay = Math.random() * 8 + 's';
-      box.appendChild(p);
+    const spawn = () => {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      for (let i = 0; i < 22; i++) {
+        const p = document.createElement('span');
+        p.className = 'particle';
+        const s = Math.random() * 4 + 2;
+        p.style.width = p.style.height = s + 'px';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.top = Math.random() * 100 + '%';
+        p.style.opacity = Math.random() * 0.5 + 0.2;
+        p.style.animationDelay = Math.random() * 8 + 's';
+        box.appendChild(p);
+      }
+    };
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(spawn, { timeout: 2500 });
+    } else {
+      window.setTimeout(spawn, 1);
     }
   }
 

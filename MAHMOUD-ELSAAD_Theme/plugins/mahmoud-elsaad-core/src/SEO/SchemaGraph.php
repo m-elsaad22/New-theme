@@ -2,6 +2,9 @@
 /**
  * JSON-LD graph with duplicate detection.
  *
+ * Organization and LocalBusiness are separate nodes so Rank Math can keep
+ * Organization while MES adds LocalBusiness when it is absent.
+ *
  * @package MahmoudElsaad\Core
  */
 
@@ -23,7 +26,7 @@ class SchemaGraph {
 	}
 
 	/**
-	 * Print JSON-LD.
+	 * Print JSON-LD (standalone script). Skipped when Rank Math owns the graph.
 	 */
 	public static function print(): void {
 		if ( ! apply_filters( 'mes_schema_should_emit', true ) ) {
@@ -47,9 +50,12 @@ class SchemaGraph {
 		$name    = $brand['name'] ?: get_bloginfo( 'name' );
 		$graph   = array();
 
+		$org_id = home_url( '/#organization' );
+		$lb_id  = home_url( '/#localbusiness' );
+
 		$org = array(
-			'@type' => array( 'Organization', 'LocalBusiness' ),
-			'@id'   => home_url( '/#organization' ),
+			'@type' => 'Organization',
+			'@id'   => $org_id,
 			'name'  => $name,
 			'url'   => home_url( '/' ),
 		);
@@ -61,12 +67,34 @@ class SchemaGraph {
 			$org['telephone'] = $phone;
 		}
 		$graph[] = $org;
+
+		$local = array(
+			'@type' => 'LocalBusiness',
+			'@id'   => $lb_id,
+			'name'  => $name,
+			'url'   => home_url( '/' ),
+			'parentOrganization' => array( '@id' => $org_id ),
+		);
+		if ( ! empty( $contact['email'] ) ) {
+			$local['email'] = $contact['email'];
+		}
+		if ( $phone ) {
+			$local['telephone'] = $phone;
+		}
+		if ( ! empty( $contact['address'] ) ) {
+			$local['address'] = array(
+				'@type'         => 'PostalAddress',
+				'streetAddress' => $contact['address'],
+			);
+		}
+		$graph[] = $local;
+
 		$graph[] = array(
 			'@type'           => 'WebSite',
 			'@id'             => home_url( '/#website' ),
 			'url'             => home_url( '/' ),
 			'name'            => $name,
-			'publisher'       => array( '@id' => home_url( '/#organization' ) ),
+			'publisher'       => array( '@id' => $org_id ),
 			'potentialAction' => array(
 				'@type'       => 'SearchAction',
 				'target'      => home_url( '/?s={search_term_string}' ),
@@ -79,7 +107,7 @@ class SchemaGraph {
 				'@type'       => 'Service',
 				'name'        => get_the_title(),
 				'description' => wp_strip_all_tags( get_the_excerpt() ),
-				'provider'    => array( '@id' => home_url( '/#organization' ) ),
+				'provider'    => array( '@id' => $org_id ),
 			);
 		}
 		if ( get_query_var( 'mes_service_city' ) && class_exists( '\\MahmoudElsaad\\Core\\Relations\\ServiceCity' ) ) {
@@ -94,7 +122,7 @@ class SchemaGraph {
 					'name'        => $landing['title'],
 					'description' => wp_strip_all_tags( $landing['excerpt'] ),
 					'areaServed'  => get_the_title( $landing['city'] ),
-					'provider'    => array( '@id' => home_url( '/#organization' ) ),
+					'provider'    => array( '@id' => $org_id ),
 				);
 			}
 		}
