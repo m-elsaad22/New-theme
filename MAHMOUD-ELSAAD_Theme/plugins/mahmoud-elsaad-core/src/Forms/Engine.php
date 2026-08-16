@@ -418,13 +418,12 @@ class Engine {
 			if ( empty( $check['ext'] ) || empty( $check['type'] ) ) {
 				return new \WP_Error( 'mes_file', 'File type not allowed' );
 			}
-			$uploaded = wp_handle_upload(
-				$file,
-				array(
-					'test_form' => false,
-					'mimes'     => $allowed,
-				)
+			$overrides = array(
+				'test_form' => false,
+				'mimes'     => $allowed,
 			);
+			$overrides = apply_filters( 'mes_form_upload_overrides', $overrides, $file );
+			$uploaded = wp_handle_upload( $file, $overrides );
 			if ( isset( $uploaded['error'] ) ) {
 				return new \WP_Error( 'mes_file', (string) $uploaded['error'] );
 			}

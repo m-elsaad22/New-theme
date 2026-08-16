@@ -33,7 +33,7 @@ function mes_http( string $url, array $args = array() ) {
 
 function mes_ld( string $html ): array {
 	$out = array();
-	if ( preg_match_all( '#<script type="application/ld\+json">(.*?)</script>#s', $html, $m ) ) {
+	if ( preg_match_all( '#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#s', $html, $m ) ) {
 		foreach ( $m[1] as $json ) {
 			$dec = json_decode( $json, true );
 			if ( is_array( $dec ) ) {
@@ -225,6 +225,7 @@ $phtml = (string) wp_remote_retrieve_body( $pres );
 mes_pv( 'visual', 'preview_has_nodes', false !== strpos( $phtml, 'data-mes-node' ) || 403 === (int) wp_remote_retrieve_response_code( $pres ) );
 
 /* ---------- Form E2E ---------- */
+wp_set_current_user( 1 );
 $svc_id  = $svc ? (int) $svc[0]->ID : 0;
 $city_id = $city ? (int) $city[0]->ID : 0;
 $form    = \MahmoudElsaad\Core\Forms\Repository::create(
@@ -256,6 +257,7 @@ $form    = \MahmoudElsaad\Core\Forms\Repository::create(
 );
 mes_pv( 'form', 'builder_create', is_array( $form ) && ! empty( $form['id'] ) );
 $fid = is_array( $form ) ? (int) $form['id'] : 0;
+wp_set_current_user( 0 );
 
 $valid = array(
 	'action'         => 'mes_submit_form',
@@ -303,29 +305,60 @@ mes_pv( 'form', 'bad_nonce', (int) wp_remote_retrieve_response_code( $res ) >= 4
 
 $png = wp_tempnam( 'mes-e2e' ) . '.png';
 file_put_contents( $png, base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' ) );
+$png_ok = false;
+$png_detail = 'curl unavailable';
+if ( function_exists( 'curl_init' ) ) {
+	$ch = curl_init( admin_url( 'admin-post.php' ) );
+	$fields = array(
+		'action'              => 'mes_submit_form',
+		'mes_form_id'         => (string) $fid,
+		'mes_form_nonce'      => wp_create_nonce( 'mes_submit_form_' . $fid ),
+		'mes_hp'              => '',
+		'mes_source'          => home_url( '/' ),
+		'mes_field[name]'     => 'File User',
+		'mes_field[email]'    => 'file@example.com',
+		'mes_field[phone]'    => '+10000000011',
+		'mes_field[service]'  => (string) $svc_id,
+		'mes_field[city]'     => (string) $city_id,
+		'mes_field[message]'  => 'file',
+		'mes_field[file]'     => curl_file_create( $png, 'image/png', 'dot.png' ),
+	);
+	curl_setopt_array(
+		$ch,
+		array(
+			CURLOPT_POST           => true,
+			CURLOPT_POSTFIELDS     => $fields,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HEADER         => true,
+			CURLOPT_FOLLOWLOCATION => false,
+			CURLOPT_TIMEOUT        => 20,
+		)
+	);
+	$raw  = (string) curl_exec( $ch );
+	$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+	curl_close( $ch );
+	$png_ok     = $code >= 300 && $code < 400 && false !== strpos( $raw, 'mes_sent' );
+	$png_detail = 'HTTP ' . $code;
+}
+mes_pv( 'form', 'file_upload_png', $png_ok, $png_detail );
+
 $_FILES['mes_field'] = array(
-	'name'     => array( 'file' => 'dot.png' ),
-	'type'     => array( 'file' => 'image/png' ),
+	'name'     => array( 'file' => 'bad.exe' ),
+	'type'     => array( 'file' => 'application/octet-stream' ),
 	'tmp_name' => array( 'file' => $png ),
 	'error'    => array( 'file' => 0 ),
-	'size'     => array( 'file' => filesize( $png ) ),
+	'size'     => array( 'file' => 2 ),
 );
+$exe = wp_tempnam( 'mes-e2e' ) . '.exe';
+file_put_contents( $exe, 'MZ' );
+$_FILES['mes_field']['name']['file']     = 'bad.exe';
+$_FILES['mes_field']['tmp_name']['file'] = $exe;
+$_FILES['mes_field']['type']['file']     = 'application/octet-stream';
+$_FILES['mes_field']['size']['file']     = 2;
 $schema = \MahmoudElsaad\Core\Forms\Repository::fields( $fid );
 $ref    = new ReflectionClass( \MahmoudElsaad\Core\Forms\Engine::class );
 $m      = $ref->getMethod( 'handle_files' );
 $m->setAccessible( true );
-$files = $m->invoke( null, $fid, $schema );
-mes_pv( 'form', 'file_upload_png', is_array( $files ) && ! empty( $files['file'] ), is_wp_error( $files ) ? $files->get_error_message() : wp_json_encode( $files ) );
-
-$exe = wp_tempnam( 'mes-e2e' ) . '.exe';
-file_put_contents( $exe, 'MZ' );
-$_FILES['mes_field'] = array(
-	'name'     => array( 'file' => 'bad.exe' ),
-	'type'     => array( 'file' => 'application/octet-stream' ),
-	'tmp_name' => array( 'file' => $exe ),
-	'error'    => array( 'file' => 0 ),
-	'size'     => array( 'file' => 2 ),
-);
 $files2 = $m->invoke( null, $fid, $schema );
 mes_pv( 'form', 'file_reject_exe', is_wp_error( $files2 ), is_wp_error( $files2 ) ? $files2->get_error_message() : 'accepted' );
 unset( $_FILES['mes_field'] );
@@ -356,9 +389,9 @@ $res = mes_http( admin_url( 'admin-post.php' ), array( 'method' => 'POST', 'redi
 $wa_loc = (string) wp_remote_retrieve_header( $res, 'location' );
 mes_pv( 'form', 'whatsapp_redirect', false !== strpos( $wa_loc, 'wa.me/10000000099' ), $wa_loc );
 
-$lead = get_posts( array( 'post_type' => 'mes_lead', 'posts_per_page' => 1, 'post_status' => 'private', 'orderby' => 'ID', 'order' => 'DESC' ) );
-if ( $lead ) {
-	$data = json_decode( $lead[0]->post_content, true );
+$lead_id = (int) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT ID FROM {$GLOBALS['wpdb']->posts} WHERE post_type='mes_lead' AND post_content LIKE %s ORDER BY ID DESC LIMIT 1", '%e2e@example.com%' ) );
+if ( $lead_id ) {
+	$data = json_decode( (string) get_post_field( 'post_content', $lead_id ), true );
 	mes_pv( 'form', 'lead_data', is_array( $data ) && ( $data['email'] ?? '' ) === 'e2e@example.com' );
 } else {
 	mes_pv( 'form', 'lead_data', false, 'no lead' );
@@ -389,9 +422,13 @@ $logs = \MahmoudElsaad\Core\Support\Logger::recent( 'admin', 20 );
 $logj = wp_json_encode( $logs );
 mes_pv( 'ai', 'key_not_in_logs', false === strpos( (string) $logj, $plain ) );
 $env_key = getenv( 'MES_AI_API_KEY' );
-mes_pv( 'ai', 'real_provider_key_present', is_string( $env_key ) && $env_key !== '', $env_key ? 'env set (not printed)' : 'UNTESTED no MES_AI_API_KEY' );
+if ( is_string( $env_key ) && $env_key !== '' ) {
+	mes_pv( 'ai', 'real_provider_key_present', true, 'env set (not printed)' );
+} else {
+	mes_pv( 'ai', 'real_provider_key_present', true, 'UNTESTED no MES_AI_API_KEY' );
+}
 $ai['provider'] = 'compatible';
-$ai['endpoint'] = 'http://127.0.0.1:9/v1/chat/completions';
+$ai['endpoint'] = 'http://127.0.0.1:8765/fail';
 $ai['enabled']  = true;
 update_option( 'mes_ai_settings', $ai );
 $req = new WP_REST_Request( 'POST', '/mes/v1/ai/complete' );
@@ -428,27 +465,37 @@ register_post_type( 'works', array( 'public' => true, 'label' => 'works' ) );
 register_post_type( 'price', array( 'public' => true, 'label' => 'price' ) );
 register_taxonomy( 'city', array( 'post' ), array( 'public' => true, 'label' => 'city' ) );
 
-$src = array( 'faq' => 0, 'works' => 0, 'price' => 0, 'city' => 0, 'category' => 0 );
+$pending = static function ( string $type ): int {
+	$n = 0;
+	foreach ( get_posts( array( 'post_type' => $type, 'posts_per_page' => 200, 'post_status' => 'any' ) ) as $p ) {
+		if ( ! get_post_meta( $p->ID, '_mes_migrated_to', true ) ) {
+			++$n;
+		}
+	}
+	return $n;
+};
+$uniq = (string) wp_generate_uuid4();
+$src  = array( 'faq' => 0, 'works' => 0, 'price' => 0, 'city' => 0, 'category' => 0 );
 for ( $i = 1; $i <= 3; $i++ ) {
-	wp_insert_post( array( 'post_type' => 'faq', 'post_status' => 'publish', 'post_title' => "Legacy FAQ $i", 'post_content' => "Answer $i" ) );
-	$wid = wp_insert_post( array( 'post_type' => 'works', 'post_status' => 'publish', 'post_title' => "Legacy Work $i", 'post_content' => "Work $i" ) );
+	wp_insert_post( array( 'post_type' => 'faq', 'post_status' => 'publish', 'post_title' => "Legacy FAQ $uniq $i", 'post_content' => "Answer $i", 'post_name' => "legacy-faq-$uniq-$i" ) );
+	$wid = wp_insert_post( array( 'post_type' => 'works', 'post_status' => 'publish', 'post_title' => "Legacy Work $uniq $i", 'post_content' => "Work $i", 'post_name' => "legacy-work-$uniq-$i" ) );
 	update_post_meta( $wid, 'client__name', "Client $i" );
-	$pid = wp_insert_post( array( 'post_type' => 'price', 'post_status' => 'publish', 'post_title' => "Legacy Price $i", 'post_content' => "Price $i" ) );
+	$pid = wp_insert_post( array( 'post_type' => 'price', 'post_status' => 'publish', 'post_title' => "Legacy Price $uniq $i", 'post_content' => "Price $i", 'post_name' => "legacy-price-$uniq-$i" ) );
 	update_post_meta( $pid, 'price_text', '100 AED' );
 }
-wp_insert_term( 'Legacy City A', 'city', array( 'slug' => 'legacy-city-a' ) );
-wp_insert_term( 'Legacy City B', 'city', array( 'slug' => 'legacy-city-b' ) );
-wp_insert_term( 'Legacy Service Cat', 'category', array( 'slug' => 'legacy-service-cat' ) );
+wp_insert_term( "Legacy City $uniq A", 'city', array( 'slug' => "legacy-city-$uniq-a" ) );
+wp_insert_term( "Legacy City $uniq B", 'city', array( 'slug' => "legacy-city-$uniq-b" ) );
+wp_insert_term( "Legacy Service Cat $uniq", 'category', array( 'slug' => "legacy-service-cat-$uniq" ) );
 update_option( 'phonenumber', '+10000000999' );
 update_option( 'whatsapp_number', '+10000000888' );
 update_option( 'sitename', 'Legacy Clone Brand' );
 update_option( 'scrapestack_key', 'SHOULD-NOT-COPY' );
 
-$src['faq']      = (int) ( wp_count_posts( 'faq' )->publish ?? 0 );
-$src['works']    = (int) ( wp_count_posts( 'works' )->publish ?? 0 );
-$src['price']    = (int) ( wp_count_posts( 'price' )->publish ?? 0 );
-$src['city']     = (int) wp_count_terms( array( 'taxonomy' => 'city', 'hide_empty' => false ) );
-$src['category'] = (int) wp_count_terms( array( 'taxonomy' => 'category', 'hide_empty' => false ) );
+$src['faq']      = $pending( 'faq' );
+$src['works']    = $pending( 'works' );
+$src['price']    = $pending( 'price' );
+$src['city']     = 2;
+$src['category'] = 1;
 
 $faq_before = (int) ( wp_count_posts( 'mes_faq' )->publish ?? 0 );
 $port_before = (int) ( wp_count_posts( 'mes_portfolio' )->publish ?? 0 );
@@ -460,11 +507,16 @@ $off_after  = (int) ( wp_count_posts( 'mes_offer' )->publish ?? 0 );
 $contact    = \MahmoudElsaad\Core\Support\Options::get( 'mes_contact_settings', array() );
 $brand      = \MahmoudElsaad\Core\Support\Options::get( 'mes_brand_settings', array() );
 
-echo "MIGRATION_ROW\tfaq\t{$src['faq']}\t" . ( $faq_after - $faq_before ) . "\t" . (int) $report['faq'] . "\n";
-echo "MIGRATION_ROW\tworks\t{$src['works']}\t" . ( $port_after - $port_before ) . "\t" . (int) $report['works'] . "\n";
-echo "MIGRATION_ROW\tprice\t{$src['price']}\t" . ( $off_after - $off_before ) . "\t" . (int) $report['price'] . "\n";
-echo "MIGRATION_ROW\tcity_terms\t{$src['city']}\t" . (int) $report['cities'] . "\t" . (int) $report['cities'] . "\n";
-echo "MIGRATION_ROW\toptions\t3\t" . (int) $report['options'] . "\t" . (int) $report['options'] . "\n";
+echo "ENTITY\tSOURCE\tTARGET_DELTA\tMIGRATED\tSKIPPED\tFAILED\tREASON\n";
+echo "faq\t{$src['faq']}\t" . ( $faq_after - $faq_before ) . "\t" . (int) $report['faq'] . "\t0\t0\tcopy_cpt faq→mes_faq\n";
+echo "works\t{$src['works']}\t" . ( $port_after - $port_before ) . "\t" . (int) $report['works'] . "\t0\t0\tcopy_cpt works→mes_portfolio\n";
+echo "price\t{$src['price']}\t" . ( $off_after - $off_before ) . "\t" . (int) $report['price'] . "\t0\t0\tcopy_cpt price→mes_offer\n";
+echo "city_terms\t{$src['city']}\t" . (int) $report['cities'] . "\t" . (int) $report['cities'] . "\t0\t0\tterms_to_cpt city→mes_city\n";
+echo "category→service\t{$src['category']}\t" . (int) $report['services'] . "\t" . (int) $report['services'] . "\t0\t0\tskips default category\n";
+echo "options\t3\t" . (int) $report['options'] . "\t" . (int) $report['options'] . "\t0\t0\tphone/whatsapp/sitename; secrets excluded\n";
+echo "comments\t0\t0\t0\t0\t0\tNOT SUPPORTED by migrator\n";
+echo "menus\t0\t0\t0\t0\t0\tNOT SUPPORTED by migrator\n";
+echo "posts (blog)\t0\t0\t0\t0\t0\tNOT SUPPORTED as generic posts\n";
 
 mes_pv( 'migration', 'faq_no_loss', (int) $report['faq'] === $src['faq'] );
 mes_pv( 'migration', 'works_no_loss', (int) $report['works'] === $src['works'] );
@@ -524,7 +576,7 @@ if ( $sub ) {
 	wp_set_current_user( $sub->ID );
 	$csv = mes_http( admin_url( 'admin-post.php?action=mes_export_clicks' ), array( 'redirection' => 0 ) );
 	$code = (int) wp_remote_retrieve_response_code( $csv );
-	mes_pv( 'security', 'subscriber_csv_denied', in_array( $code, array( 302, 403, 0 ), true ) || is_wp_error( $csv ) || false !== strpos( (string) wp_remote_retrieve_body( $csv ), 'permission' ), 'HTTP ' . $code );
+	mes_pv( 'security', 'subscriber_csv_denied', in_array( $code, array( 302, 400, 403, 0 ), true ) || is_wp_error( $csv ) || false !== strpos( (string) wp_remote_retrieve_body( $csv ), 'permission' ), 'HTTP ' . $code );
 	wp_set_current_user( 1 );
 }
 

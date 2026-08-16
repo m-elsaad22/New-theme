@@ -84,5 +84,9 @@ function mes_breadcrumbs(): string {
 	} elseif ( is_archive() ) {
 		$items[] = esc_html( wp_strip_all_tags( get_the_archive_title() ) );
 	}
-	return '<ol class="crumb">' . implode( ' / ', $items ) . '</ol>';
+	$html = '';
+	foreach ( $items as $item ) {
+		$html .= '<li>' . $item . '</li>';
+	}
+	return '<ol class="crumb">' . $html . '</ol>';
 }

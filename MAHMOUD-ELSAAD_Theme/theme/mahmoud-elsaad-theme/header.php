@@ -53,7 +53,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	</div>
 </header>
-<div class="mob" id="mob">
+<nav class="mob" id="mob" aria-label="<?php esc_attr_e( 'Mobile', 'mahmoud-elsaad' ); ?>">
 	<button class="mob-close" type="button" onclick="toggleMob(false)" aria-label="<?php esc_attr_e( 'Close', 'mahmoud-elsaad' ); ?>"><i class="fas fa-xmark"></i></button>
 	<div class="lang-item">
 		<span class="ll"><i class="fas fa-earth-americas"></i> <?php esc_html_e( 'Language', 'mahmoud-elsaad' ); ?></span>
@@ -75,7 +75,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	echo function_exists( 'mes_render_whatsapp_button' ) ? mes_render_whatsapp_button( array( 'placement' => 'mobile', 'class' => 'btn btn-wa' ) ) : '';
 	echo function_exists( 'mes_render_phone_button' ) ? mes_render_phone_button( array( 'placement' => 'mobile', 'class' => 'btn btn-call' ) ) : '';
 	?>
-</div>
+</nav>
 <div id="mes-search" class="mes-search" hidden>
 	<form role="search" method="get" action="<?php echo esc_url( home_url( '/' ) ); ?>">
 		<label class="screen-reader-text" for="mes-q"><?php esc_html_e( 'Search', 'mahmoud-elsaad' ); ?></label>
