@@ -1,10 +1,18 @@
-# MAHMOUD-ELSAAD Quality Gates
+# MAHMOUD-ELSAAD Quality Gates (Phase 1 + implementation pointer)
+
+**Current runtime evidence** lives in `docs/MAHMOUD-ELSAAD-QUALITY-GATES.md` and `docs/MAHMOUD-ELSAAD-FINAL-COMPLIANCE.md`.
+
+Lab (source of truth for this package): WordPress 7.0.4, PHP 8.3.6, MariaDB, HTTPS. **77 PASS / 0 FAIL** and **73 PASS / 0 FAIL**. Classification: **PRODUCTION READY CANDIDATE**. Not 100% Master Spec.
+
+This file keeps the **Phase 1 documentation gate** (legacy classified before implementation). That gate has **passed**. Later directional phases in section 4 are historical planning notes; they must not be read as “not yet implemented.” Implementation exists. Remaining leftovers are listed in the Quality Gates / Final Compliance documents.
+
+---
 
 ## 1. Purpose
 
 Quality gates prevent the rebuild from treating incomplete analysis as implementation-ready work. A phase passes only when its required evidence exists, contradictions are resolved or explicitly recorded, and a named reviewer can reproduce the checks.
 
-This document fully defines the **Phase 1 gate: documentation created and legacy classified**. Later gates are listed to preserve direction but require their own detailed test plans when implementation begins.
+Phase 1 (this file’s original body) is: **documentation created and legacy classified**. Runtime tests are **not** claimed by Phase 1; they are claimed by `MAHMOUD-ELSAAD-QUALITY-GATES.md`.
 
 ## 2. Gate rules
 
@@ -106,6 +114,8 @@ Additional discovered credential-bearing integrations follow the same **SECRET �
 - [x] A deprecated row states a reason in the status or notes.
 - [x] New locations name target modules/files rather than old runtime packages.
 
+The matrix now also has a **Current platform status** section using IMPLEMENTED / TESTED / PARTIAL / UNTESTED / OUT OF SCOPE. That section is additive; it does not replace the Phase 1 column vocabulary.
+
 #### Coverage
 
 The matrix includes:
@@ -165,13 +175,13 @@ The reviewer compares the audit, matrix, architecture, and design reference:
 - [x] The core plugin is `mahmoud-elsaad-core`.
 - [x] The theme is `mahmoud-elsaad-theme`.
 - [x] Mega menu is compatibility-only and disabled by default.
-- [x] Form-builder artifacts are migration-only.
+- [x] **Legacy** form-builder artifacts (`yc-froms`, `edit-forms.php`) are migration-only. The **new** Control Center form builder is the runtime editor.
 - [x] Scraping code is excluded.
 - [x] The default frontend comes from the HTML designs.
 - [x] Brand strings and phone numbers in HTML are treated as demo content.
 - [x] Cities are first-class `mes_city` posts.
 - [x] Service-city is a many-to-many relation with a custom route.
-- [x] Click tracking has a dedicated table and privacy boundary.
+- [x] Click tracking has a dedicated table (`mes_clicks`) and privacy boundary.
 - [x] A missing/inactive service-city pair returns 404.
 - [x] The theme does not own business data or table migrations.
 
@@ -194,7 +204,7 @@ Confirm the matrix header and core target terms:
 rg -n 'OLD FEATURE.*OLD LOCATION.*NEW LOCATION.*STATUS.*NOTES' \
   MAHMOUD-ELSAAD_Theme/docs/MAHMOUD-ELSAAD-FEATURE-MATRIX.md
 
-rg -n 'mahmoud-elsaad-core|mahmoud-elsaad-theme|translation_group_id|language_code|mes_service_city|mes_click_events' \
+rg -n 'mahmoud-elsaad-core|mahmoud-elsaad-theme|translation_group_id|language_code|mes_service_city|mes_clicks' \
   MAHMOUD-ELSAAD_Theme/docs/architecture.md
 ```
 
@@ -223,14 +233,13 @@ Phase 1 is **blocked** by:
 
 Phase 1 is **not blocked** by:
 
-- target PHP files not existing yet;
 - unresolved public slug wording;
 - an undecided currency provider;
 - an undecided public review-submission policy;
 - final retention periods awaiting product/legal input;
 - the temporary extraction no longer being present after documentation is committed.
 
-Those items are implementation/product inputs and are explicitly listed in `architecture.md`.
+Those items are implementation/product inputs and are listed in `architecture.md` section 19.
 
 ### 3.11 Exit criteria
 
@@ -247,7 +256,7 @@ Phase 1 passes when:
 
 ### 3.12 Gate result
 
-**Result: PASS — documentation scope.**
+**Result: PASS — documentation scope (Phase 1).**
 
 Evidence:
 
@@ -257,62 +266,36 @@ Evidence:
 - the target architecture defines plugin/theme boundaries, target content objects, custom tables, translations, Control Center, and HTML design-system mapping;
 - credentials are discussed only as redacted risks and are prohibited from migration.
 
-This pass authorizes implementation planning. It does not assert that the plugin, theme, migrations, routes, templates, security controls, or runtime tests have been implemented.
+Phase 1 authorized implementation. **Implementation has since shipped.** Runtime claims belong in `MAHMOUD-ELSAAD-QUALITY-GATES.md`, not in this Phase 1 checklist.
 
-## 4. Later phase gates
+## 4. Later phase gates (historical planning)
 
-The following gates are directional. They must be expanded with executable acceptance tests when their phases begin.
+The following list was directional during implementation. It is **not** a current “not done” checklist. See `MAHMOUD-ELSAAD-QUALITY-GATES.md` for executed tests and leftovers.
 
 ### Phase 2 — Skeleton and data contracts
 
-- plugin and theme activate without warnings/fatals;
-- all target post types/meta/taxonomies register deterministically;
-- custom tables install and upgrade idempotently;
-- capabilities and Control Center shell exist;
-- service-city route resolves valid/invalid pairs correctly;
-- automated coding, static-analysis, and unit-test baselines pass.
+Plugin/theme activation, CPTs/tables, Control Center shell, service-city 404s: **implemented and lab-tested**.
 
 ### Phase 3 — Migration rehearsal
 
-- dry-run and bounded resumable import work on a production-like snapshot;
-- source-target ID maps and checksums make reruns idempotent;
-- form and shortcode conversions produce review reports;
-- counts reconcile or every delta has an accepted reason;
-- credentials and out-of-retention personal data are excluded;
-- rollback/restore procedure is rehearsed.
+Detect → map → transform → validate on an HTML clone: **implemented and lab-tested**. Live production SQL dump remains **UNAVAILABLE**.
 
 ### Phase 4 — Frontend parity with HTML source
 
-- all 19 page types are implemented;
-- visual regression at agreed widths passes;
-- RTL, keyboard, focus, reduced motion, contrast, forms, and error states pass;
-- no demo brand/contact value leaks into runtime;
-- responsive images, fonts, and critical assets meet performance budgets;
-- real 404/search/canonical behavior passes.
+Nineteen page types, RTL, 404/search: **implemented**. Homepage axe 0. OS reduced-motion **UNTESTED**. Physical Android **UNAVAILABLE**.
 
 ### Phase 5 — Integrations and hardening
 
-- notifications, anti-spam, SEO coexistence, multilingual behavior, and optional currency integration pass failure-mode tests;
-- REST authorization, rate limiting, validation, and privacy tests pass;
-- dependency and secret scans pass;
-- click/lead retention and deletion jobs are verified;
-- backup, observability, and incident diagnostics are documented.
+Rank Math coexistence, form notifications, REST 403, webhook SSRF: **lab-tested**. Real vendor AI success **UNTESTED**. Field INP **UNAVAILABLE**.
 
 ### Phase 6 — Cutover
 
-- final delta migration reconciles;
-- redirects and sitemap/canonical outputs are verified;
-- legacy compatibility is disabled by default;
-- monitoring shows no critical PHP, HTTP, form, notification, or rewrite failures;
-- rollback decision points are explicit;
-- removal dates are assigned to remaining compatibility adapters.
+Host-specific cutover, redirects, and monitoring remain a production operations task, not a missing package feature.
 
 ## Implementation gate (this package)
 
 - PHP syntax: pass (`php -l` on plugin/theme PHP).
 - Runtime YourColor branding in `theme/` and `plugins/`: 0 hits.
 - Packages present: `plugins/mahmoud-elsaad-core`, `theme/mahmoud-elsaad-theme`.
-- Control Center views, tracking JSON/Ajax, language prefix strip, UAE+GCC cities seed, homepage sections (certs/pricing/knowledge/case studies), service×city override UI: implemented.
-- WordPress activation smoke test: not runnable here (no WP runtime). Activate on WordPress 6.6+ / PHP 8.2+.
-
-
+- Control Center, visual tree + live iframe, form builder, tracking, language prefix, seeded countries/cities, Service × City UI: **implemented**.
+- WordPress runtime: **tested** — WordPress 7.0.4, PHP 8.3.6, MariaDB, HTTPS; **77 PASS / 0 FAIL** and **73 PASS / 0 FAIL**.

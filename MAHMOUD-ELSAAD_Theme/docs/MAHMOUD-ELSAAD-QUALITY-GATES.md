@@ -4,7 +4,7 @@ Statuses used in this document: **COMPLETE** · **PARTIAL** · **UNTESTED** · *
 
 **COMPLETE** means implemented **and** exercised in a WordPress runtime. This file does **not** claim 100% Master Spec completion.
 
-The platform remains a **Production Candidate**.
+The platform remains a **Production Ready Candidate**.
 
 ---
 
@@ -50,7 +50,8 @@ No live WordPress SQL dump exists in the repository. The ZIP is theme PHP + HTML
 | Tables, CPTs, taxonomies, plugin/theme active | COMPLETE | 77-suite on MariaDB HTTPS origin |
 | Routes `/`, `/ar/`, `/en/`, services, cities, service×city, search, 404 | COMPLETE | HTTP 200 / 404 as asserted |
 | Forms render + POST lead | COMPLETE | `mes_sent` + lead count |
-| Visual tree compile/inherit | COMPLETE | Runtime assertions |
+| Visual tree compile/inherit | COMPLETE | 73-harness: persist, inherit, tablet/mobile overrides, CSS breakpoints |
+| Form builder CRUD | COMPLETE | 77-suite create/duplicate/rename/delete; 73-harness builder + submit actions |
 | REST + Control Center views | COMPLETE | health/visual/forms/settings/SEO/AI/migration |
 | Subscriber denied `/mes/v1/health` | COMPLETE | HTTP 403 |
 | Brand audit YourColor/`YC_`/`yc_` | COMPLETE | 0 hits in plugin+theme; runtime `hits=0` |

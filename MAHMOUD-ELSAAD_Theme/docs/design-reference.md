@@ -17,7 +17,7 @@ Brand strings such as «ركن التطور» and the demo phone `+971 58 663 47
 | `--mes-gold-2` / `--gold2` | `#F0CE73` | Gold highlight |
 | `--mes-footer` / `--footer` | `#124C9C` | Footer background |
 | `--mes-success` / `--success` | `#18C96A` | Success |
-| `--mes-wa` / `--wa` | `#25D366` | WhatsApp |
+| `--mes-wa` / `--wa` | `#075E54` | WhatsApp (contrast-safe; not `#25D366`) |
 | `--mes-bg` / `--bg` | `#F4F8FD` | Page background |
 | `--mes-text` / `--text` | `#1C2E44` | Body text |
 | `--mes-text-2` / `--text2` | `#3A5068` | Secondary text |
@@ -67,8 +67,8 @@ Fonts are loaded from Google Fonts with `preconnect`, and can be self-hosted lat
 |---|---|
 | home.html | `front-page.php` |
 | about.html | `page-templates/about.php` |
-| services.html | `archive-mes_service.php` |
-| service-single.html | `single-mes_service.php` |
+| services.html | `archive-service.php` |
+| service-single.html | `single-service.php` |
 | service-category.html | `taxonomy-mes_service_cat.php` |
 | service-city.html | rewrite template `templates/service-city.php` |
 | cities.html | `archive-mes_city.php` |

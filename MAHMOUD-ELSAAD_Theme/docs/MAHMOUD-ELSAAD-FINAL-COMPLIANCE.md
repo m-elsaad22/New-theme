@@ -4,7 +4,7 @@ Statuses: **COMPLETE** · **PARTIAL** · **UNTESTED** · **FAILED** · **NOT APP
 
 **COMPLETE** is used only when the capability exists in this repository **and** was exercised in the WordPress runtime described in `MAHMOUD-ELSAAD-QUALITY-GATES.md` (MariaDB HTTPS lab unless noted).
 
-This audit does **not** claim 100% completion. The project is a **Production Candidate**.
+This audit does **not** claim 100% completion. The project is a **Production Ready Candidate**.
 
 ---
 
@@ -201,7 +201,7 @@ This audit does **not** claim 100% completion. The project is a **Production Can
 
 ## Production installation procedure
 
-1. WordPress 6.4+ (tested here on 7.0.4) and PHP 8.2+ on **MySQL/MariaDB**.
+1. WordPress **6.6+** (lab-tested on **7.0.4**) and PHP 8.2+ on **MySQL/MariaDB**.
 2. Pretty permalinks enabled (`/%postname%/`). Serve the site as **HTTPS**; set `siteurl` and `home` to the HTTPS origin.
 3. Copy `MAHMOUD-ELSAAD_Theme/plugins/mahmoud-elsaad-core` → `wp-content/plugins/mahmoud-elsaad-core`.
 4. Copy `MAHMOUD-ELSAAD_Theme/theme/mahmoud-elsaad-theme` → `wp-content/themes/mahmoud-elsaad-theme`.

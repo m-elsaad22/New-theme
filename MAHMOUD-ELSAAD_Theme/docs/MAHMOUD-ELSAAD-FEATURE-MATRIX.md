@@ -1,15 +1,54 @@
 # MAHMOUD-ELSAAD Feature Matrix
 
-## Reading this matrix
+## Current platform status
 
-This matrix maps legacy outcomes to the intended MAHMOUD-ELSAAD platform. “New location” names the owning component or intended file/module; it does not claim that implementation already exists.
+Runtime evidence: `docs/MAHMOUD-ELSAAD-QUALITY-GATES.md` (77 PASS / 0 FAIL, 73 PASS / 0 FAIL). Classification: **PRODUCTION READY CANDIDATE**. Not 100% Master Spec.
 
-Allowed status meanings:
+Current-status vocabulary (this section only):
+
+| Status | Meaning |
+|---|---|
+| **IMPLEMENTED** | Exists in Core or Theme code |
+| **TESTED** | Exercised in the WordPress lab |
+| **PARTIAL** | Code exists; coverage or a product slice is incomplete |
+| **UNTESTED** | Code or environment path not exercised |
+| **OUT OF SCOPE** | Deliberately excluded; not a failure |
+
+| Capability | Current status | Notes |
+|---|---|---|
+| Two-package Core + Theme, `mes_` prefix | IMPLEMENTED · TESTED | WP 7.0.4 / PHP 8.3.6 / MariaDB |
+| Service, cities, countries, Service × City landings | IMPLEMENTED · TESTED | Table + HTTP 200 / 404 |
+| Forms engine + leads + `[mes_form]` | IMPLEMENTED · TESTED | `admin-post.php` submit |
+| Form builder CRUD, add/remove/reorder, drag-and-drop | IMPLEMENTED · TESTED | `mes_form` + `form-builder.js` |
+| Form validation, conditionals, lead/email/WhatsApp/webhook | IMPLEMENTED · TESTED | 73-harness |
+| Visual tree Global → Page → Section → Component → Element | IMPLEMENTED · TESTED | `Visual\Tree` |
+| Desktop → Tablet → Mobile overrides + live iframe preview | IMPLEMENTED · TESTED | Real homepage iframe |
+| Freeform Elementor-like DOM/page builder | OUT OF SCOPE | Structured inheritance editor only |
+| Control Center screens | IMPLEMENTED · TESTED | Views rendered in 77-suite |
+| Rank Math coexistence + inject-missing types | IMPLEMENTED · TESTED | One JSON-LD script when deferred |
+| AI providers + encrypted keys + local fallback | IMPLEMENTED · TESTED | Invalid key / stubs / transport |
+| Real Gemini/OpenAI successful completion | UNTESTED | No `MES_AI_API_KEY` |
+| Migration detect → map → transform → validate | IMPLEMENTED · TESTED | HTML clone; no live SQL dump |
+| Live production legacy SQL dump | UNTESTED / UNAVAILABLE | Not in the repository |
+| Tracking REST/Ajax/CSV | IMPLEMENTED · TESTED | |
+| Security caps, nonces, SSRF, MIME | IMPLEMENTED · TESTED | Lab harness COMPLETE |
+| Homepage axe 0; LCP 254 ms | TESTED | Chrome 148 HTTPS lab |
+| Firefox trusted HTTPS | UNTESTED | Environment limitation |
+| Physical Android | UNTESTED | Device UNAVAILABLE |
+| Field INP | UNTESTED | NOT COLLECTED |
+| Scraping / Field machine / AjaxCenter dispatch | OUT OF SCOPE | Must not return |
+| Mega menu as default HTML nav | OUT OF SCOPE | Compatibility only |
+
+## Legacy mapping table
+
+The table below maps **old** YourColor outcomes to **new** locations. Column **STATUS** uses the original Phase 1 vocabulary:
 
 - **Preserved** — behavior and data semantics remain substantially the same.
 - **Improved** — the capability remains, with stronger security, accessibility, performance, or editorial behavior.
 - **Reimplemented** — the user outcome remains but the implementation and usually the presentation are replaced.
 - **Deprecated — reason** — deliberately excluded from the target runtime, with the reason stated.
+
+Those four words describe *legacy disposition*, not “missing in the new product.” New locations **are implemented** unless the row is Deprecated / OUT OF SCOPE.
 
 The core plugin owns persistent content, relationships, submissions, tracking, migration, and APIs. The theme owns templates, components, assets, and presentation. The HTML designs are the visual source of truth.
 
@@ -32,7 +71,7 @@ The core plugin owns persistent content, relationships, submissions, tracking, m
 | Sticky features widget | `YourColorWidgets/model-widgets/Standard/sticky__features.php` | `mahmoud-elsaad-theme/template-parts/components/feature-list.php` | Improved | Responsive and keyboard-safe sticky behavior; disable sticky treatment where viewport or reduced-motion needs require it. |
 | Benefits widget | `YourColorWidgets/model-widgets/Standard/benefits.php` | `mahmoud-elsaad-theme/template-parts/components/benefit-grid.php` | Reimplemented | Preserve content semantics, not legacy markup or CSS. |
 | FAQ widget | `YourColorWidgets/model-widgets/Standard/Faqs__simple2.php` | `mahmoud-elsaad-theme/template-parts/components/faq-accordion.php`; `mes_faq` query service | Improved | Accessible accordion; schema emitted only for visible published FAQ content. |
-| Contact form widget | `YourColorWidgets/model-widgets/Standard/contact__form.php` | Contact template + `mes_form` renderer | Deprecated — old widget is orphaned | Old field definitions are not rendered. Build a complete form against `mes_form` and `mes_lead`. |
+| Contact form widget | `YourColorWidgets/model-widgets/Standard/contact__form.php` | Contact template + `mes_form` renderer + Control Center form builder | Deprecated — old widget is orphaned | Replaced. New forms are `mes_form` / `mes_lead` with a drag-and-drop builder. |
 | Category widget | `YourColorWidgets/model-widgets/Standard/category.php` | `template-parts/components/service-category-grid.php` or blog category component | Reimplemented | Select the target object explicitly instead of overloading one generic category widget. |
 | Blog listing widget | `YourColorWidgets/model-widgets/Standard/blog_v1.php` | `mahmoud-elsaad-theme/home.php`; `template-parts/cards/article.php` | Improved | Normal queries, canonical pagination, semantic cards, image dimensions, and empty state. |
 | City widget | `YourColorWidgets/model-widgets/Standard/city__widget.php` | `archive-mes_city.php`; `template-parts/cards/city.php` | Reimplemented | Cities become first-class posts and can show service availability from the relation table. |
@@ -53,7 +92,7 @@ The core plugin owns persistent content, relationships, submissions, tracking, m
 | Team | Theme options/widgets if present | `mahmoud-elsaad-core/src/Content/Team.php` (`mes_team`) | Reimplemented | Structured member name, role, portrait, biography, order, and links. |
 | Partners | Theme options/widgets if present | `mahmoud-elsaad-core/src/Content/Partner.php` (`mes_partner`) | Reimplemented | Structured partner logo, accessible name, URL, order, and publication state. |
 | Leads | Email-only contact/service submissions | `mahmoud-elsaad-core/src/Content/Lead.php` (`mes_lead`) | Improved | Store a minimal, access-controlled system-of-record entry before notifications; enforce retention and consent policy. |
-| Form definitions | `yc-froms`, `@wp-models/edit-forms.php`, `AllForms.php` | `mahmoud-elsaad-core/src/Content/Form.php` (`mes_form`) | Reimplemented | Import supported serialized definitions into a versioned schema, inactive until reviewed. |
+| Form definitions | `yc-froms`, `@wp-models/edit-forms.php`, `AllForms.php` | `mahmoud-elsaad-core/src/Forms/Repository.php` (`mes_form`) | Reimplemented | Versioned schema on `mes_form`. Control Center builder is the editor; legacy files are migration-only. |
 | `questions` taxonomy | `taxonomies/setup.php` attached to `bot` | `mes_faq` migration mapping | Deprecated — attached post type is unregistered | Recover valid content only; do not register `bot` to make broken code appear functional. |
 | Core category attached to works | `taxonomies/setup.php` | Core category for posts; optional dedicated portfolio taxonomy | Improved | Avoid globally re-registering core `category` with mixed object semantics. |
 | City taxonomy | `taxonomies/setup.php` (`city` on posts) | `mes_city` CPT + migration ID map | Reimplemented | Preserve term names/slugs/descriptions/meta while assigning stable target IDs. |
@@ -63,7 +102,7 @@ The core plugin owns persistent content, relationships, submissions, tracking, m
 | Multilingual linkage | Ad hoc or absent | `translation_group_id` + `language_code` registered fields and repository | Reimplemented | Validate language codes, group only equivalent content, and generate alternates/canonicals consistently. |
 | Contact submission Ajax | `AjaxCenter/contact__form.php` | `mes/v1/forms/{form}/submissions` | Deprecated — old handler is orphaned and insufficiently protected | New route validates schema, consent, honeypot/throttle, creates a lead, and queues notification. |
 | Service-request form | `@Popovers/form_services.php`; `AjaxCenter/forms__services.php` | Booking/contact templates + `mes_form`/`mes_lead` application service | Improved | Preserve multi-step outcome where useful; enforce server-owned step and field definitions. |
-| Form-builder list and editor | `@wp-models/AllForms.php`, `edit-forms.php` | Control Center Forms screens | Reimplemented | WordPress capabilities, nonces, schema versioning, revisions/audit information, and preview. |
+| Form-builder list and editor | `@wp-models/AllForms.php`, `edit-forms.php` | Control Center Forms + `assets/admin/js/form-builder.js` | Reimplemented | CRUD, add/remove/reorder, drag-and-drop, validation, conditionals, lead/email/WhatsApp/webhook. Not an Elementor page builder. |
 | Comments | `AjaxCenter/AddComment.php`, `CommentContent.php` | WordPress comments on blog posts; explicit REST/Ajax adapter only if needed | Improved | Use native moderation, nonce, sanitization, approved-comment visibility, spam controls, and safe aggregate logic. |
 | Ratings submitted with comments | `AddComment.php`, `RateAjax.php` | `mes_review` submission/moderation service | Reimplemented | Validate rating range, prevent replay/duplicates, and never trust client aggregates. |
 | Custom Ajax endpoint | `AjaxCenter/setup.php` and handler files | Explicit `mes/v1` REST controllers; admin Ajax only when WordPress UI requires it | Deprecated — dynamic file dispatch is unsafe | No URL-derived PHP includes. Every route declares methods, permissions, validation, and response schema. |
@@ -86,21 +125,21 @@ The core plugin owns persistent content, relationships, submissions, tracking, m
 | Field machine | `FieldsMachine/**` | Registered meta schemas, REST exposure where needed, and Control Center field components | Deprecated — custom framework is too broad and tightly coupled | Preserve field data through mapping, not the framework runtime or bundled UI libraries. |
 | UI field types | `FieldsMachine/FieldsContext/**`, `@UIFields/**` | Control Center components for approved text, media, select, relation, repeater, date, and rich-text types | Improved | Allow-list field types; sanitize SVG/HTML; do not support executable code fields. |
 | Theme options | `FieldsMachine/ThemeOptions.php`, `SetupFields/ThemeOptions/**` | Control Center Settings with `mes_*` options | Improved | Group Brand, Contact, Social, SEO, Integrations, Appearance, Forms, and Migration; validate every setting. |
-| Control Center admin | Scattered custom admin pages | `mahmoud-elsaad-core/src/Admin/ControlCenter` | Reimplemented | One capability-aware entry point with focused screens, notices, health checks, and no frontend coupling. |
+| Visual control | Not present as an inheritance tree | `src/Visual/{Tree,Schema,Compiler,Preview,Front}.php`; Control Center Design | Reimplemented | Global → Page → Section → Component → Element; Desktop/Tablet/Mobile; live homepage iframe. **Not** a freeform Elementor-like builder. |
 | Export/import | `export-import/**` | `mahmoud-elsaad-core/src/LegacyMigration`; WP-CLI and guarded admin runner | Improved | Dry-run, idempotency, checksums, source-target maps, redacted logs, attachment policy, and reconciliation. |
 | Scraping workflow | `YC-Scrape/**`; scraping helper in `syntax.php` | None | Deprecated — outside target runtime and contains secret-bearing integration | Do not copy code or credentials. Revoke/rotate legacy credential separately. |
 | Currency conversion | `currency_edits/setup.php` | Settings/formatting service; optional provider adapter under `src/Integrations/Currency` | Improved | Prefer one configured display currency. If conversion is approved, use environment secrets, decimal-safe math, allow-list, caching, and stale-data behavior. |
 | Number/date formatting | `Numberformat`, `DisplayDate`, `DatedFormate` | `src/Support/Formatting.php` plus WordPress locale/date APIs | Improved | Arabic-friendly localized output without redefining broad global helpers. |
 | View counting | `ViewsCounter/setup.php`; mutations in `syntax.php` | Analytics/click repository and aggregate service | Improved | Avoid write-on-every-render post meta, exclude bots where possible, and remain cache-safe. |
-| Click tracking | Scattered link/Ajax behavior | `$wpdb->prefix . 'mes_click_events'`; `src/Tracking/ClickTracker.php` | Reimplemented | Append minimal event data for approved CTA types; retention, indexes, aggregation, and privacy are explicit. |
+| Click tracking | Scattered link/Ajax behavior | `$wpdb->prefix . 'mes_clicks'`; `src/Tracking/Clicks.php` | Reimplemented | Allow-listed CTA types; REST + admin-ajax; CSV export; rate limit. |
 | Global enqueue stripping | `Enqueues/setup.php` (`disable_all_scripts`) | Theme asset manifest/enqueues; optional route-aware dequeue allow-list | Deprecated — breaks plugins and WordPress behavior | Never iterate through and remove every queued asset. Optimize only owned or explicitly reviewed handles. |
 | Asset version removal | `Enqueues/setup.php` filters | Build-generated asset versions | Deprecated — harms cache invalidation | Use content hashes or theme/plugin versions. |
 | Bundled old jQuery | `#footer/js/jquery-3.4.1.min.js` | No default dependency; WordPress-registered jQuery only if a component genuinely needs it | Deprecated — duplicate outdated runtime | New interactions should use small modern JavaScript modules. |
-| WebP upload conversion | `webp_Converter/setup.php` | Media policy/service using WordPress image editor APIs | Improved | Validate support, preserve correct metadata, define original/derivative policy, and fail without corrupting uploads. |
+| WebP upload conversion | `webp_Converter/setup.php` | None (WordPress media APIs only) | Deprecated — legacy converter not copied | Do not clone the old converter. Uploads use WordPress image editors. |
 | Image sizes/thumbnails | `thumbnails/setup.php` | Theme image-size registration and responsive image components | Improved | Derive sizes from the HTML layouts, declare width/height, use `srcset`, and regenerate after migration. |
 | Content image lazy loading | `contentLazyLoad`, `modify_img` | Native WordPress loading attributes and responsive image APIs | Improved | Do not mutate arbitrary HTML with broad string replacement. |
 | Fonts | Legacy style/font includes | Theme font tokens and enqueue layer | Improved | Cairo/Tajawal stack from design reference; preconnect only when remote fonts are used and support future self-hosting. |
-| Design tokens | Scattered old CSS variables/styles | `mahmoud-elsaad-theme/assets/css/tokens.css` | Reimplemented | Use documented navy/blue/turquoise/gold palette, radii, shadows, spacing, typography, and dark tokens. |
+| Design tokens | Scattered old CSS variables/styles | `mahmoud-elsaad-theme/assets/css/main.css` (`:root` tokens) | Reimplemented | Navy/blue/turquoise/gold palette; WhatsApp button token `#075E54` for contrast. Control Center can override CSS variables. |
 | Responsive frontend | Legacy responsive CSS | Theme component CSS | Improved | RTL-first behavior across 320–1920px, with primary breakpoints 640/768/1024px. |
 | Motion and effects | Legacy animation classes/footer scripts | `assets/js/motion.js`; component CSS | Improved | Scroll reveal, counters, accordion, filters, before/after, carousel, particles, and ripple only where designed; honor reduced motion. |
 | Popover/form UI | `@Popovers/**` | Accessible dialog component and form-flow templates | Improved | Semantic dialog behavior, field errors, loading state, retry state, and no injected executable markup. |

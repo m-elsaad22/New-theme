@@ -2,14 +2,18 @@
 
 ## 1. Status and scope
 
-This document defines the target architecture for the MAHMOUD-ELSAAD WordPress platform. It is an implementation contract; paths describe the intended repository layout and do not imply that those files already exist.
+This document is the **architecture contract for the current implementation** under `MAHMOUD-ELSAAD_Theme/`. Paths name files that exist unless marked otherwise.
 
 The system has two deployable application packages:
 
-1. `mahmoud-elsaad-core` — business content, relationships, forms, leads, tracking, APIs, administration, SEO data, and legacy migration.
+1. `mahmoud-elsaad-core` — business content, relationships, forms, leads, tracking, APIs, administration, visual inheritance tree, SEO data, AI, and legacy migration.
 2. `mahmoud-elsaad-theme` — WordPress templates, HTML-design components, styling, interaction scripts, and presentation-only integration.
 
 The 19 HTML files are the frontend source of truth. The extracted legacy theme is a data/workflow discovery source only.
+
+Visual editing is a **structured inheritance tree** (Global → Page → Section → Component → Element) with Desktop → Tablet → Mobile overrides and a live homepage iframe. It is **not** a freeform Elementor-like DOM/page builder.
+
+Classification of the running product: **PRODUCTION READY CANDIDATE** (see `MAHMOUD-ELSAAD-QUALITY-GATES.md`). Not 100% Master Spec.
 
 ## 2. Architecture principles
 
@@ -30,28 +34,37 @@ Recommended top-level layout:
 
 ```text
 MAHMOUD-ELSAAD_Theme/
+├── README.md
 ├── docs/
+├── bin/
+│   ├── mes-runtime-tests.php
+│   └── mes-production-validation.php
 ├── plugins/
 │   └── mahmoud-elsaad-core/
 │       ├── mahmoud-elsaad-core.php
 │       ├── uninstall.php
 │       ├── src/
 │       │   ├── Admin/
+│       │   ├── AI/
 │       │   ├── API/
 │       │   ├── Content/
 │       │   ├── Database/
+│       │   ├── Demo/
 │       │   ├── Forms/
-│       │   ├── Integrations/
+│       │   ├── Helpers/
 │       │   ├── LegacyMigration/
 │       │   ├── Localization/
+│       │   ├── Performance/
 │       │   ├── Relations/
+│       │   ├── Routing/
+│       │   ├── Security/
 │       │   ├── SEO/
 │       │   ├── Support/
-│       │   └── Tracking/
+│       │   ├── Tracking/
+│       │   └── Visual/
 │       ├── assets/
-│       ├── languages/
-│       └── tests/
-└── themes/
+│       └── languages/
+└── theme/
     └── mahmoud-elsaad-theme/
         ├── style.css
         ├── functions.php
@@ -59,32 +72,14 @@ MAHMOUD-ELSAAD_Theme/
         ├── header.php
         ├── footer.php
         ├── front-page.php
-        ├── home.php
-        ├── page.php
-        ├── single.php
-        ├── archive-service.php
-        ├── single-service.php
-        ├── archive-mes_city.php
-        ├── single-mes_city.php
-        ├── archive-mes_portfolio.php
-        ├── archive-mes_offer.php
-        ├── archive-mes_review.php
-        ├── archive-mes_faq.php
-        ├── search.php
-        ├── 404.php
+        ├── templates/service-city.php
         ├── page-templates/
-        ├── templates/
         ├── template-parts/
-        ├── assets/
-        │   ├── css/
-        │   ├── js/
-        │   ├── fonts/
-        │   └── images/
-        ├── languages/
-        └── tests/
+        ├── assets/css/main.css
+        └── languages/
 ```
 
-The `service` CPT key is intentionally unprefixed by product requirement. Therefore its hierarchy files are `archive-service.php` and `single-service.php`. Any older planning reference to `archive-mes_service.php` or `single-mes_service.php` must be corrected during implementation; a template filename cannot compensate for a different registered post-type key.
+The `service` CPT key is intentionally unprefixed by product requirement. Hierarchy files are `archive-service.php` and `single-service.php`.
 
 ## 4. Naming and ownership
 
@@ -218,7 +213,7 @@ WordPress does not enforce foreign keys consistently across deployments, so repo
 
 ### 6.2 Click tracking
 
-Suggested logical table: `mes_click_events`.
+Suggested logical table: `mes_clicks` (actual table name).
 
 | Column | Purpose |
 |---|---|
@@ -246,7 +241,7 @@ Do not store message text, phone input, email, full IP address, arbitrary header
 Every translatable object has:
 
 - `language_code`: normalized BCP 47-compatible product code, for example `ar` or `en`;
-- `translation_group_id`: stable opaque group identifier shared by equivalent language records.
+- `translation_group_id`: stored as post meta `_mes_translation_group`; stable opaque group identifier shared by equivalent language records.
 
 Rules:
 
@@ -339,18 +334,16 @@ Do not support arbitrary PHP, raw executable HTML, untrusted SVG, arbitrary call
 
 ```text
 Theme form
-  -> POST mes/v1/forms/{id}/submissions
+  -> POST admin-post.php?action=mes_submit_form
   -> form active/version check
-  -> nonce/origin policy where applicable
-  -> throttle + honeypot/anti-spam
+  -> nonce + honeypot
   -> schema validation and normalization
-  -> consent validation
   -> create private mes_lead
-  -> enqueue notification
-  -> return localized success response + reference
+  -> email / webhook / WhatsApp actions as configured
+  -> redirect with mes_sent (or WhatsApp) + reference
 ```
 
-The lead is the system of record. If email fails, the lead remains visible with a failed notification state and can be retried. Logs contain IDs and error codes, not full submitted personal data.
+Form **definitions** are edited in Control Center (REST `mes/v1` CRUD, drag-and-drop field list). The lead is the system of record. If email fails, the lead remains and the visitor still receives `mes_sent`. Logs contain IDs and error codes, not full submitted personal data.
 
 ### 10.3 Retention and access
 
@@ -362,17 +355,20 @@ The lead is the system of record. If email fails, the lead remains visible with 
 
 ## 11. Control Center
 
-`src/Admin/ControlCenter` provides one coherent administration entry point, with pages such as:
+`src/Admin/ControlCenter.php` provides one coherent administration entry point:
 
 - Dashboard and health;
-- Brand and contact;
-- Services and locations;
-- Forms;
+- Content (services, cities, countries, offers, reviews, portfolio, team, partners);
+- Forms (database-backed builder);
 - Leads;
-- Reviews;
+- Service × City landings;
+- Analytics;
+- Design (visual inheritance tree + live homepage iframe);
 - SEO and schema;
-- Integrations;
-- Tracking summary;
+- AI;
+- Performance;
+- Security;
+- Settings (brand, contact, map URL allowlist);
 - Migration and reconciliation.
 
 Requirements:
@@ -386,6 +382,10 @@ Requirements:
 - clear empty, loading, success, partial, and failure states;
 - redacted diagnostics;
 - no embedded secret values returned to browser after save.
+
+### 11.1 Visual inheritance editor
+
+`src/Visual` stores a tree (Global → Page → Section → Component → Element). Each node has own Desktop / Tablet / Mobile props. The compiler emits only a node's own declarations. Control Center Design loads the **real homepage** in an iframe (`?mes_preview=1`). This is not a freeform page builder.
 
 ## 12. Theme and HTML design system
 
@@ -420,11 +420,11 @@ The theme exposes the documented token system:
 - blue `#2980D4`, turquoise `#2E9DF7`, aqua `#4FA8FF`;
 - gold `#C9A227`, gold highlight `#F0CE73`;
 - footer blue `#124C9C`;
-- success `#18C96A`, WhatsApp `#25D366`;
+- success `#18C96A`, WhatsApp `#075E54` (contrast-safe; not the brighter `#25D366` brand green);
 - background `#F4F8FD`, text `#1C2E44`, secondary text `#3A5068`;
 - border `#E2EAF5`, muted `#6B8099`, white `#FFFFFF`.
 
-Tokens live in `assets/css/tokens.css` and are mirrored to `theme.json` where WordPress editor support benefits. Dark mode uses `[data-mes-theme="dark"]`; it must preserve contrast and not be implemented by inverting images.
+Tokens live in `theme/mahmoud-elsaad-theme/assets/css/main.css` (`:root`) and are overridable from Control Center. They are mirrored to `theme.json` where WordPress editor support benefits. Dark mode uses `[data-mes-theme="dark"]`; it must preserve contrast and not be implemented by inverting images.
 
 Typography:
 
@@ -609,20 +609,20 @@ Client request -> PHP filename/include
 
 If the core plugin is inactive, the theme should show an administrator notice and degrade safely for business templates. It must not fatal-error.
 
-## 19. Architectural decisions still requiring product input
+## 19. Remaining limitations (not product guesses)
 
-These are explicit decisions, not implementation guesses:
+Resolved in the current packages: visual inheritance editor, form builder, Rank Math inject-missing types, Service × City routes, MariaDB/HTTPS lab.
 
-1. Public URL slug policy per language.
-2. Whether `mes_country` has public singles/archives or is administrative only.
-3. Whether portfolio needs its own categories.
-4. Mapping of each old `price` record to offer versus service pricing.
-5. Whether visitors may submit reviews publicly.
-6. Form retention, consent wording, notification recipients, and spam provider.
-7. Whether live currency conversion is required; default is configured display currency only.
-8. Analytics retention and whether visitor deduplication is permitted.
-9. Approved SEO/multilingual plugins and output ownership.
-10. Duration and removal criteria for mega-menu and shortcode compatibility adapters.
+Still **not** claimed complete:
 
-None of these decisions permits copying legacy secrets or restoring the dynamic Ajax dispatcher.
+1. Public URL slug policy per language beyond `/ar/` `/en/` prefix stripping — **PARTIAL**.
+2. Whether visitors may submit reviews publicly — product policy; `mes_review` is editorial.
+3. Live currency conversion — not required; display currency from settings.
+4. Field INP — **UNAVAILABLE** / not collected.
+5. Real Gemini/OpenAI successful completion — **UNTESTED**.
+6. Firefox on trusted HTTPS — **UNTESTED** (environment limitation).
+7. Physical Android — **UNAVAILABLE**.
+8. Freeform Elementor-like page builder — **OUT OF SCOPE**.
+
+None of these permits copying legacy secrets or restoring the dynamic Ajax dispatcher.
 

@@ -1,8 +1,12 @@
 # MAHMOUD-ELSAAD Legacy Theme Audit
 
+**Scope:** this file classifies the *extracted legacy* `ServicesTheme(YourColor)` code. It is the migration contract for what must not be copied.
+
+The **new runtime is implemented**. Current tests and leftovers: `docs/MAHMOUD-ELSAAD-QUALITY-GATES.md`, `docs/MAHMOUD-ELSAAD-FINAL-COMPLIANCE.md`, `docs/MAHMOUD-ELSAAD-FINAL-REPORT.md`.
+
 ## 1. Purpose and decision rule
 
-This document classifies the code extracted from `ServicesTheme(YourColor)` and defines what may cross into the new MAHMOUD-ELSAAD platform. It is an audit and migration contract, not a statement that the new runtime has already been implemented.
+This document classifies the code extracted from `ServicesTheme(YourColor)` and defines what may cross into the new MAHMOUD-ELSAAD platform. It is an audit and migration contract, not a runtime test report.
 
 The governing rule is:
 
