@@ -24,6 +24,7 @@ class KayanCC_Phone_Replacement {
         if ( empty( $old_variants ) ) {
             return [ 'error' => 'لم يتم التعرف على الرقم القديم كرقم هاتف صحيح.' ];
         }
+        // new_number can be empty (deletion mode)
 
         $posts = $this->get_scope_posts( $scope );
 
@@ -57,11 +58,12 @@ class KayanCC_Phone_Replacement {
      */
     public function execute( string $old_number, string $new_number, array $scope ): array|\WP_Error {
         $old_variants = $this->get_number_variants( $old_number );
-        $new_e164     = KayanCC_Helpers::normalize_phone( $new_number );
         if ( empty( $old_variants ) ) {
             return new \WP_Error( 'invalid_old', 'الرقم القديم غير صحيح.' );
         }
-        if ( ! $new_e164 ) {
+        // Allow empty new_number (means deletion / removal of the old number)
+        $new_e164 = trim( $new_number ) !== '' ? KayanCC_Helpers::normalize_phone( $new_number ) : '';
+        if ( trim( $new_number ) !== '' && ! $new_e164 ) {
             return new \WP_Error( 'invalid_new', 'الرقم الجديد غير صحيح.' );
         }
 
@@ -265,8 +267,16 @@ class KayanCC_Phone_Replacement {
         $post    = get_post( $post_id );
         $changed = false;
 
-        // Replace in post content
+        // Sort variants longest-first to avoid partial replacements
+        usort( $old_variants, fn( $a, $b ) => strlen( $b ) - strlen( $a ) );
         $new_content = $post->post_content;
+
+        // When deleting (empty new_number), do a URL pre-pass first:
+        // strip entire WhatsApp/tel link attributes that contain any number variant
+        if ( $new_number === '' ) {
+            $new_content = $this->strip_contact_urls( $new_content, $old_variants );
+        }
+
         foreach ( $old_variants as $variant ) {
             $new_content = $this->smart_replace( $new_content, $variant, $new_number );
         }
@@ -333,15 +343,31 @@ class KayanCC_Phone_Replacement {
     }
 
     /**
+     * Strip full contact URL structures (wa.me, whatsapp.com, tel:) that contain any of the number variants.
+     * Called as a pre-pass before individual variant replacement in deletion mode.
+     */
+    private function strip_contact_urls( string $content, array $variants ): string {
+        foreach ( $variants as $variant ) {
+            $escaped = preg_quote( $variant, '/' );
+            // Full href="https://wa.me/..." or https://api.whatsapp.com/... containing the number
+            $content = preg_replace( '/(?:href=["\'])?https?:\/\/(?:api\.whatsapp\.com|wa\.me|whatsapp\.com)[^\s"\'<>]*' . $escaped . '[^\s"\'<>]*(?:["\'])?/u', '', $content ) ?? $content;
+            // tel: links
+            $content = preg_replace( '/(?:href=["\'])?tel:[+\s\-.()\d]*' . $escaped . '[+\s\-.()\d]*(?:["\'])?/u', '', $content ) ?? $content;
+        }
+        return $content;
+    }
+
+    /**
      * String replacement ensuring we only replace whole-number occurrences (not fragments).
-     * Uses word-boundary-aware matching.
      */
     private function smart_replace( string $haystack, string $needle, string $replacement, bool $is_regex = false ): string {
         if ( $is_regex ) {
             return preg_replace( '/' . $needle . '/u', $replacement, $haystack ) ?? $haystack;
         }
-        // Escape special chars for exact matching
-        $pattern = '/(?<![0-9])' . preg_quote( $needle, '/' ) . '(?![0-9])/u';
+
+        $escaped = preg_quote( $needle, '/' );
+        // Replace standalone number occurrences (not embedded in larger numbers)
+        $pattern = '/(?<![0-9+])' . $escaped . '(?![0-9])/u';
         return preg_replace( $pattern, $replacement, $haystack ) ?? $haystack;
     }
 }

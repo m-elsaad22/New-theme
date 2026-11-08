@@ -211,37 +211,22 @@ class KayanCC_Phone_Manager {
 
     /**
      * Delete a number occurrence from a specific post content or meta field.
+     * Uses KayanCC_Phone_Replacement for safe serialized/JSON handling.
      */
     public function delete_from_location( string $phone_e164, string $source_type, int $source_id, string $source_field ): bool|\WP_Error {
         if ( ! $source_id ) return new \WP_Error( 'invalid_source', 'معرف المصدر غير صحيح.' );
 
-        $variants = array_filter( [ $phone_e164, $this->e164_to_local( $phone_e164 ) ] );
-
-        if ( in_array( $source_type, [ 'post_content', 'post_title' ], true ) ) {
-            $post        = get_post( $source_id );
-            $new_content = $post->post_content;
-            foreach ( $variants as $v ) {
-                $new_content = preg_replace( '/(?<![0-9])' . preg_quote( $v, '/' ) . '(?![0-9])/u', '', $new_content ) ?? $new_content;
-            }
-            wp_update_post( [ 'ID' => $source_id, 'post_content' => $new_content ] );
-            KayanCC_Activity_Log::record( 'delete_from_location', 'post', $source_id, [ 'field' => $source_type ], [ 'number' => $phone_e164 ] );
+        if ( in_array( $source_type, [ 'post_content', 'post_title', 'post_meta' ], true ) ) {
+            // Use replacement engine with empty new_number (= deletion mode)
+            $replacer = new KayanCC_Phone_Replacement();
+            $scope    = [ 'type' => 'posts', 'ids' => [ $source_id ] ];
+            $result   = $replacer->execute( $phone_e164, '', $scope );
+            if ( is_wp_error( $result ) ) return $result;
+            KayanCC_Activity_Log::record( 'delete_from_location', $source_type, $source_id, [ 'field' => $source_field ], [ 'number' => $phone_e164 ] );
             return true;
         }
 
-        if ( $source_type === 'post_meta' ) {
-            $meta_key = str_replace( 'postmeta:', '', $source_field );
-            $meta_val = get_post_meta( $source_id, $meta_key, true );
-            if ( is_string( $meta_val ) ) {
-                foreach ( $variants as $v ) {
-                    $meta_val = preg_replace( '/(?<![0-9])' . preg_quote( $v, '/' ) . '(?![0-9])/u', '', $meta_val ) ?? $meta_val;
-                }
-                update_post_meta( $source_id, $meta_key, $meta_val );
-                KayanCC_Activity_Log::record( 'delete_from_location', 'post_meta', $source_id, [ 'meta_key' => $meta_key ], [ 'number' => $phone_e164 ] );
-            }
-            return true;
-        }
-
-        return new \WP_Error( 'unsupported_source', 'نوع المصدر غير مدعوم للحذف المباشر.' );
+        return new \WP_Error( 'unsupported_source', 'نوع المصدر ' . $source_type . ' غير مدعوم للحذف المباشر. يجب التعديل يدوياً.' );
     }
 
     private function e164_to_local( string $e164 ): string {
