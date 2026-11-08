@@ -17,15 +17,8 @@
     <nav class="kayan-cc-nav">
         <?php
         $nav_items = [
-            [ 'kayan-control-center',       '🏠 لوحة المعلومات'   ],
-            [ 'kayan-cc-scanner',           '🔍 اكتشاف الأرقام'   ],
-            [ 'kayan-cc-phone-manager',     '📞 إدارة الأرقام'    ],
-            [ 'kayan-cc-phone-assignment',  '📋 توزيع الأرقام'    ],
-            [ 'kayan-cc-phone-replacement', '🔄 استبدال الأرقام'  ],
-            [ 'kayan-cc-seo-manager',       '🔎 عناوين SEO'       ],
-            [ 'kayan-cc-seo-templates',     '📝 قوالب SEO'        ],
-            [ 'kayan-cc-activity-log',      '📋 سجل التعديلات'    ],
-            [ 'kayan-cc-settings',          '⚙ الإعدادات'         ],
+            [ 'kayan-control-center', '📞 إدارة الأرقام' ],
+            [ 'kayan-cc-seo-manager', '🔎 عناوين SEO'    ],
         ];
         $current = $_GET['page'] ?? 'kayan-control-center';
         foreach ( $nav_items as [ $slug, $label ] ) :

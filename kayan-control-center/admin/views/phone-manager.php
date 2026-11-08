@@ -1,8 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <?php include KAYAN_CC_PLUGIN_DIR . 'admin/partials/header.php'; ?>
 
-<h2 class="kayan-cc-page-title">📞 إدارة الأرقام</h2>
-
 <div class="kayan-cc-toolbar">
     <div class="kayan-cc-toolbar__search">
         <input type="text" id="kayan-cc-search-numbers" placeholder="بحث عن رقم أو اسم..." class="kayan-cc-input">

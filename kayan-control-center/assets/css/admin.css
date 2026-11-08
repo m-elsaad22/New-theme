@@ -32,8 +32,7 @@
     justify-content: space-between;
     background: var(--kcc-primary);
     color: #fff;
-    padding: 14px 24px;
-    border-radius: var(--kcc-radius) var(--kcc-radius) 0 0;
+    padding: 12px 24px;
     margin-bottom: 0;
 }
 
@@ -338,77 +337,56 @@
 
 /* ── Pagination ───────────────────────────────────────────────── */
 .kayan-cc-pagination {
-    padding: 12px 0 4px;
+    padding: 14px 0 4px;
 }
 
 .kayan-cc-pag-wrap {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .kayan-cc-pag-info {
     font-size: 12px;
     color: var(--kcc-text-muted);
-    margin-left: 10px;
     white-space: nowrap;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 4px;
 }
 
-.kayan-cc-pag-nums {
-    display: inline-flex;
-    gap: 4px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.kayan-cc-pag-ellipsis {
-    color: var(--kcc-text-muted);
-    padding: 0 2px;
-    font-size: 13px;
+.kayan-cc-pag-indicator {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--kcc-text);
+    min-width: 70px;
+    text-align: center;
 }
 
 .kayan-cc-pagination .page-btn {
-    padding: 6px 11px;
+    padding: 7px 16px;
     border: 1px solid var(--kcc-border);
     border-radius: 6px;
-    background: #fff;
+    background: var(--kcc-bg);
     cursor: pointer;
     font-size: 13px;
+    font-weight: 600;
     line-height: 1.4;
     transition: background .15s, color .15s;
     white-space: nowrap;
 }
 
-.kayan-cc-pagination .page-btn.active {
+.kayan-cc-pagination .page-btn:hover:not([disabled]) {
     background: var(--kcc-primary);
     color: #fff;
     border-color: var(--kcc-primary);
-    font-weight: 600;
 }
-
-.kayan-cc-pagination .page-btn:hover:not(.active):not([disabled]) { background: var(--kcc-bg); }
 
 .kayan-cc-pagination .page-btn[disabled] {
-    opacity: .4;
+    opacity: .35;
     cursor: not-allowed;
-}
-
-.kayan-cc-pagination .page-btn--nav {
-    padding: 6px 14px;
-    font-weight: 600;
-    background: var(--kcc-bg);
-    border-color: var(--kcc-border);
-}
-
-/* Mobile page indicator – hidden on desktop, shown on mobile via media query */
-.kayan-cc-pag-mobile {
-    display: none;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--kcc-text);
-    padding: 0 6px;
 }
 
 /* ── Progress ─────────────────────────────────────────────────── */
@@ -846,13 +824,9 @@
     .kayan-cc-per-page { flex-wrap: wrap; }
     .kayan-cc-per-page__presets .kayan-cc-preset-btn { padding: 5px 8px; font-size: 12px; }
 
-    /* Pagination – hide numbered pages, show mobile indicator */
-    .kayan-cc-pag-nums  { display: none; }
-    .kayan-cc-pag-mobile { display: inline; }
-    .kayan-cc-pag-info { width: 100%; text-align: center; margin: 0 0 6px; }
-    .kayan-cc-pag-wrap { gap: 8px; }
-    .kayan-cc-pagination .page-btn--nav { padding: 8px 18px; font-size: 14px; }
-    .kayan-cc-pagination .page-btn--nav[disabled] { display: none; }
+    /* Pagination */
+    .kayan-cc-pagination .page-btn { padding: 9px 20px; font-size: 14px; }
+    .kayan-cc-pagination .page-btn[disabled] { display: none; }
 
     /* Import banner */
     .kayan-cc-import-banner { flex-direction: column; }

@@ -1,8 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <?php include KAYAN_CC_PLUGIN_DIR . 'admin/partials/header.php'; ?>
 
-<h2 class="kayan-cc-page-title">🔎 إدارة عناوين SEO</h2>
-
 <?php if ( ! KayanCC_SEO_Manager::get_instance()->is_rank_math_active() ) : ?>
     <div class="kayan-cc-notice kayan-cc-notice--error">
         <strong>تحذير:</strong> إضافة Rank Math غير مفعلة.

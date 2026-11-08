@@ -73,47 +73,24 @@
     }
 
     function renderPagination( $container, paging, onPageClick ) {
-        if ( ! paging ) { $container.empty(); return; }
+        if ( ! paging || paging.total_pages <= 1 ) { $container.empty(); return; }
         var total      = paging.total || 0;
         var totalPages = paging.total_pages || 1;
         var cur        = paging.current_page || 1;
+        var prevPage   = Math.max( 1, cur - 1 );
+        var nextPage   = Math.min( totalPages, cur + 1 );
 
         var html = '<div class="kayan-cc-pag-wrap">';
-
-        // Total count
         html += '<span class="kayan-cc-pag-info">' + total + ' عنصر</span>';
-
-        // Prev button
-        html += '<button class="page-btn page-btn--nav kayan-cc-pag-prev"' +
+        html += '<button class="page-btn page-btn--nav"' +
                 ( cur <= 1 ? ' disabled' : '' ) +
-                ' data-page="' + Math.max( 1, cur - 1 ) + '">&#x2190; السابق</button>';
-
-        if ( totalPages > 1 ) {
-            // Numbered buttons (desktop)
-            var nums = '<span class="kayan-cc-pag-nums">';
-            var start = Math.max( 1, cur - 2 );
-            var end   = Math.min( totalPages, cur + 2 );
-            if ( start > 1 ) nums += '<button class="page-btn" data-page="1">1</button>' +
-                                     ( start > 2 ? '<span class="kayan-cc-pag-ellipsis">…</span>' : '' );
-            for ( var i = start; i <= end; i++ ) {
-                nums += '<button class="page-btn' + ( i === cur ? ' active' : '' ) +
-                        '" data-page="' + i + '">' + i + '</button>';
-            }
-            if ( end < totalPages ) nums += ( end < totalPages - 1 ? '<span class="kayan-cc-pag-ellipsis">…</span>' : '' ) +
-                                            '<button class="page-btn" data-page="' + totalPages + '">' + totalPages + '</button>';
-            nums += '</span>';
-            html += nums;
-
-            // Mobile indicator (shows only on small screens via CSS)
-            html += '<span class="kayan-cc-pag-mobile">' + cur + ' / ' + totalPages + '</span>';
-        }
-
-        // Next button
-        html += '<button class="page-btn page-btn--nav kayan-cc-pag-next"' +
+                ' data-page="' + prevPage + '">&#x2190; السابق</button>';
+        html += '<span class="kayan-cc-pag-indicator">' + cur + ' / ' + totalPages + '</span>';
+        html += '<button class="page-btn page-btn--nav"' +
                 ( cur >= totalPages ? ' disabled' : '' ) +
-                ' data-page="' + Math.min( totalPages, cur + 1 ) + '">التالي &#x2192;</button>';
-
+                ' data-page="' + nextPage + '">التالي &#x2192;</button>';
         html += '</div>';
+
         $container.html( html );
         $container.find( '.page-btn:not([disabled])' ).on( 'click', function() {
             onPageClick( parseInt( $( this ).data( 'page' ), 10 ) );
@@ -1140,17 +1117,48 @@
         $( '#kayan-cc-data-modal' ).show();
     } );
 
-    /* ── Auto-import on phone manager page load ─────────────────── */
+    /* ── Auto-discover on phone manager page load ───────────────── */
+    // 1. Check if scan results exist
+    // 2a. If yes → import them silently, then load numbers
+    // 2b. If no  → run a full background scan, then import, then load numbers
     function autoImportOnLoad() {
         if ( ! $( '#kayan-cc-numbers-table' ).length ) return;
-        ajax( 'kayan_cc_import_from_scan', {} )
+
+        ajaxGet( 'kayan_cc_get_scan_results', { page: 1, per_page: 1 } )
             .done( function( res ) {
-                if ( res.success && res.data.imported > 0 ) {
-                    toast( '✅ تم استيراد ' + res.data.imported + ' رقم جديد من آخر فحص.', 'success' );
+                var hasScanData = res.success && res.data && res.data.paging && res.data.paging.total > 0;
+                if ( hasScanData ) {
+                    // Already have scan data → import silently
+                    ajax( 'kayan_cc_import_from_scan', {} )
+                        .done( function( imp ) {
+                            if ( imp.success && imp.data.imported > 0 ) {
+                                toast( '✅ تم استيراد ' + imp.data.imported + ' رقم جديد.', 'success' );
+                            }
+                            loadNumbers();
+                        } )
+                        .fail( function() { loadNumbers(); } );
+                } else {
+                    // No scan data → run full auto-scan
+                    runAutoScan();
                 }
-                loadNumbers();
             } )
             .fail( function() { loadNumbers(); } );
+    }
+
+    function runAutoScan() {
+        if ( rescanRunning ) return;
+        rescanRunning = true;
+        $( '#kayan-cc-rescan-btn' ).prop( 'disabled', true ).text( '⏳ جارٍ الاكتشاف...' );
+        $( '#kayan-cc-rescan-progress' ).show();
+        $( '#kayan-cc-rescan-fill' ).css( 'width', '5%' );
+        $( '#kayan-cc-rescan-status' ).text( 'جارٍ اكتشاف الأرقام تلقائياً...' );
+
+        ajax( 'kayan_cc_start_scan', {} )
+            .done( function( res ) {
+                if ( ! res.success ) { endRescan( 'خطأ في بدء الفحص.' ); loadNumbers(); return; }
+                processRescanBatch( 1, 0 );
+            } )
+            .fail( function() { endRescan( 'تعذّر الاتصال.' ); loadNumbers(); } );
     }
 
     /* ── Inline Rescan (phone manager toolbar button) ────────────── */
@@ -1158,21 +1166,8 @@
 
     $( document ).on( 'click', '#kayan-cc-rescan-btn', function() {
         if ( rescanRunning ) return;
-        rescanRunning = true;
-        $( '#kayan-cc-rescan-btn' ).prop( 'disabled', true ).text( '⏳ جارٍ الفحص...' );
-        $( '#kayan-cc-rescan-progress' ).show();
-        $( '#kayan-cc-rescan-fill' ).css( 'width', '5%' );
         $( '#kayan-cc-rescan-status' ).text( 'بدء الفحص...' );
-
-        ajax( 'kayan_cc_start_scan', {} )
-            .done( function( res ) {
-                if ( ! res.success ) {
-                    endRescan( 'حدث خطأ عند بدء الفحص.' );
-                    return;
-                }
-                processRescanBatch( 1, 0 );
-            } )
-            .fail( function() { endRescan( 'تعذّر الاتصال بالخادم.' ); } );
+        runAutoScan();
     } );
 
     $( document ).on( 'click', '#kayan-cc-rescan-cancel', function() {

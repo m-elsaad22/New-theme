@@ -29,21 +29,14 @@ class KayanCC_Admin {
             'KAYAN CC',
             'manage_options',
             'kayan-control-center',
-            [ $this, 'render_dashboard' ],
+            [ $this, 'render_phone_manager' ],
             'dashicons-phone',
             30
         );
 
         $subpages = [
-            [ 'kayan-control-center',          'لوحة المعلومات',     'render_dashboard'      ],
-            [ 'kayan-cc-scanner',              'اكتشاف الأرقام',     'render_scanner'        ],
-            [ 'kayan-cc-phone-manager',        'إدارة الأرقام',      'render_phone_manager'  ],
-            [ 'kayan-cc-phone-assignment',     'توزيع الأرقام',      'render_assignment'     ],
-            [ 'kayan-cc-phone-replacement',    'استبدال الأرقام',    'render_replacement'    ],
-            [ 'kayan-cc-seo-manager',          'عناوين SEO',         'render_seo_manager'    ],
-            [ 'kayan-cc-seo-templates',        'قوالب SEO',          'render_seo_templates'  ],
-            [ 'kayan-cc-activity-log',         'سجل التعديلات',      'render_activity_log'   ],
-            [ 'kayan-cc-settings',             'الإعدادات',          'render_settings'       ],
+            [ 'kayan-control-center',   'إدارة الأرقام', 'render_phone_manager' ],
+            [ 'kayan-cc-seo-manager',   'عناوين SEO',    'render_seo_manager'   ],
         ];
 
         foreach ( $subpages as [ $slug, $title, $callback ] ) {
