@@ -709,6 +709,24 @@
 .kayan-cc-import-results .kcc-new  { color: var(--kcc-success); font-weight: 600; }
 .kayan-cc-import-results .kcc-skip { color: var(--kcc-text-muted); }
 
+/* Inline rescan progress section */
+.kayan-cc-rescan-section {
+    padding: 12px 20px;
+    margin-bottom: 16px;
+}
+.kayan-cc-rescan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--kcc-text);
+    gap: 12px;
+}
+.kayan-cc-rescan-header #kayan-cc-rescan-status {
+    font-weight: 600;
+}
+
 /* Number card (mobile view) */
 .kayan-cc-number-card {
     background: #fff;

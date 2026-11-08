@@ -26,7 +26,21 @@
             </div>
         </div>
         <button id="kayan-cc-export-csv" class="button">⬇ CSV</button>
+        <button id="kayan-cc-rescan-btn" class="button" title="فحص الموقع واستيراد الأرقام الجديدة">🔄 فحص وتحديث</button>
         <button id="kayan-cc-add-number" class="button button-primary">+ إضافة رقم</button>
+    </div>
+</div>
+
+<!-- Inline scan progress (hidden until scan starts) -->
+<div id="kayan-cc-rescan-progress" style="display:none" class="kayan-cc-section kayan-cc-rescan-section">
+    <div class="kayan-cc-rescan-header">
+        <span id="kayan-cc-rescan-status">جارٍ الفحص...</span>
+        <button id="kayan-cc-rescan-cancel" class="button button-small">إلغاء</button>
+    </div>
+    <div class="kayan-cc-progress">
+        <div class="kayan-cc-progress__bar">
+            <div id="kayan-cc-rescan-fill" class="kayan-cc-progress__fill" style="width:5%"></div>
+        </div>
     </div>
 </div>
 

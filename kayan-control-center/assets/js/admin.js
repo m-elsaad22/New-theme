@@ -1140,11 +1140,99 @@
         $( '#kayan-cc-data-modal' ).show();
     } );
 
+    /* ── Auto-import on phone manager page load ─────────────────── */
+    function autoImportOnLoad() {
+        if ( ! $( '#kayan-cc-numbers-table' ).length ) return;
+        ajax( 'kayan_cc_import_from_scan', {} )
+            .done( function( res ) {
+                if ( res.success && res.data.imported > 0 ) {
+                    toast( '✅ تم استيراد ' + res.data.imported + ' رقم جديد من آخر فحص.', 'success' );
+                }
+                loadNumbers();
+            } )
+            .fail( function() { loadNumbers(); } );
+    }
+
+    /* ── Inline Rescan (phone manager toolbar button) ────────────── */
+    var rescanRunning = false;
+
+    $( document ).on( 'click', '#kayan-cc-rescan-btn', function() {
+        if ( rescanRunning ) return;
+        rescanRunning = true;
+        $( '#kayan-cc-rescan-btn' ).prop( 'disabled', true ).text( '⏳ جارٍ الفحص...' );
+        $( '#kayan-cc-rescan-progress' ).show();
+        $( '#kayan-cc-rescan-fill' ).css( 'width', '5%' );
+        $( '#kayan-cc-rescan-status' ).text( 'بدء الفحص...' );
+
+        ajax( 'kayan_cc_start_scan', {} )
+            .done( function( res ) {
+                if ( ! res.success ) {
+                    endRescan( 'حدث خطأ عند بدء الفحص.' );
+                    return;
+                }
+                processRescanBatch( 1, 0 );
+            } )
+            .fail( function() { endRescan( 'تعذّر الاتصال بالخادم.' ); } );
+    } );
+
+    $( document ).on( 'click', '#kayan-cc-rescan-cancel', function() {
+        endRescan( 'تم إلغاء الفحص.' );
+    } );
+
+    function processRescanBatch( batchNum, found ) {
+        if ( ! rescanRunning ) return;
+        ajax( 'kayan_cc_scan_batch', {} )
+            .done( function( res ) {
+                if ( ! res.success ) { endRescan( 'خطأ في دفعة الفحص.' ); return; }
+                var d       = res.data;
+                found       = ( d.found_in_batch || 0 ) + found;
+                var pct     = d.done ? 100 : Math.min( 90, 5 + batchNum * 8 );
+                $( '#kayan-cc-rescan-fill' ).css( 'width', pct + '%' );
+                var phaseLabel = { posts: 'المقالات', options: 'الإعدادات', widgets: 'الودجات', menus: 'القوائم' };
+                var phaseName  = d.status && d.status.phase ? ( phaseLabel[ d.status.phase ] || d.status.phase ) : '';
+                $( '#kayan-cc-rescan-status' ).text(
+                    d.done ? 'اكتمل الفحص — جارٍ الاستيراد...'
+                           : ( phaseName ? 'جارٍ فحص ' + phaseName + '...' : 'جارٍ الفحص...' )
+                );
+                if ( d.done ) {
+                    importAfterRescan();
+                } else {
+                    setTimeout( function() { processRescanBatch( batchNum + 1, found ); }, 150 );
+                }
+            } )
+            .fail( function() { endRescan( 'انقطع الاتصال.' ); } );
+    }
+
+    function importAfterRescan() {
+        ajax( 'kayan_cc_import_from_scan', {} )
+            .done( function( res ) {
+                var msg = res.success
+                    ? '✅ اكتمل الفحص — استيراد ' + res.data.imported + ' رقم جديد'
+                    : 'اكتمل الفحص.';
+                endRescan( msg );
+                if ( res.success && res.data.imported > 0 ) {
+                    toast( 'تم استيراد ' + res.data.imported + ' رقم جديد.', 'success' );
+                } else {
+                    toast( 'الفحص اكتمل — لا أرقام جديدة.', 'success' );
+                }
+                loadNumbers();
+            } )
+            .fail( function() { endRescan( 'اكتمل الفحص.' ); loadNumbers(); } );
+    }
+
+    function endRescan( msg ) {
+        rescanRunning = false;
+        $( '#kayan-cc-rescan-btn' ).prop( 'disabled', false ).text( '🔄 فحص وتحديث' );
+        $( '#kayan-cc-rescan-fill' ).css( 'width', '100%' );
+        $( '#kayan-cc-rescan-status' ).text( msg || 'اكتمل.' );
+        setTimeout( function() { $( '#kayan-cc-rescan-progress' ).fadeOut( 400 ); }, 3000 );
+    }
+
     /* ════════════════════════════════════════════════════════════
        INIT
     ════════════════════════════════════════════════════════════ */
     $( function() {
-        loadNumbers();
+        autoImportOnLoad();   // silently import from last scan, then loadNumbers()
         loadScanResults( 1 );
         loadAssignments();
         loadSeoPosts();
