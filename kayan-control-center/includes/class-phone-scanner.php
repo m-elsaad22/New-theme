@@ -118,6 +118,105 @@ class KayanCC_Phone_Scanner {
     }
 
     /**
+     * Import confirmed numbers from scan results into the phone numbers registry.
+     * Returns [ 'imported' => int, 'skipped' => int, 'numbers' => [] ]
+     */
+    public function import_to_manager(): array {
+        global $wpdb;
+        $scan_table = KayanCC_Database::get_scan_table();
+        $manager    = KayanCC_Phone_Manager::get_instance();
+
+        // Get distinct confirmed normalised numbers
+        $rows = $wpdb->get_results( // phpcs:ignore
+            "SELECT DISTINCT normalized, raw_value, result_type
+             FROM {$scan_table}
+             WHERE result_type IN ('phone_confirmed','whatsapp_confirmed')
+               AND normalized != ''
+             ORDER BY normalized",
+            ARRAY_A
+        );
+
+        $imported = 0;
+        $skipped  = 0;
+        $numbers  = [];
+
+        foreach ( $rows as $row ) {
+            $norm = $row['normalized'];
+
+            // Check if already exists (by e164 or whatsapp_e164)
+            $num_table = KayanCC_Database::get_numbers_table();
+            $exists = $wpdb->get_var( // phpcs:ignore
+                $wpdb->prepare(
+                    "SELECT id FROM {$num_table} WHERE phone_e164 = %s OR whatsapp_e164 = %s LIMIT 1",
+                    $norm,
+                    $norm
+                )
+            );
+
+            if ( $exists ) {
+                $skipped++;
+                continue;
+            }
+
+            // Derive a human-readable name from the raw value
+            $name = $norm; // fallback
+            $id   = $manager->create( [
+                'name'            => $name,
+                'phone_number'    => $norm,
+                'whatsapp_number' => $norm,
+                'country'         => 'الإمارات العربية المتحدة',
+                'country_code'    => '+971',
+                'status'          => 'active',
+                'call_label'      => 'اتصل بنا',
+                'wa_label'        => 'واتساب',
+                'call_enabled'    => 1,
+                'wa_enabled'      => 1,
+            ] );
+
+            if ( ! is_wp_error( $id ) ) {
+                $imported++;
+                $numbers[] = [ 'id' => $id, 'normalized' => $norm, 'raw' => $row['raw_value'] ];
+            }
+        }
+
+        return [ 'imported' => $imported, 'skipped' => $skipped, 'numbers' => $numbers ];
+    }
+
+    /**
+     * Get all locations where a given normalised number appears (from scan results).
+     */
+    public function get_number_locations( string $normalized ): array {
+        global $wpdb;
+        $table = KayanCC_Database::get_scan_table();
+
+        $rows = $wpdb->get_results( // phpcs:ignore
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE normalized = %s OR raw_value LIKE %s ORDER BY source_type, source_id",
+                $normalized,
+                '%' . $wpdb->esc_like( $normalized ) . '%'
+            ),
+            ARRAY_A
+        );
+
+        // Group by source_type
+        $grouped = [];
+        foreach ( $rows as $row ) {
+            $type = $row['source_type'];
+            if ( ! isset( $grouped[ $type ] ) ) $grouped[ $type ] = [];
+
+            // Enrich with post title if source has a post_id
+            if ( $row['source_id'] > 0 && in_array( $type, [ 'post_content', 'post_title', 'post_meta' ], true ) ) {
+                $post = get_post( (int) $row['source_id'] );
+                $row['post_title'] = $post ? $post->post_title : '#' . $row['source_id'];
+                $row['edit_url']   = get_edit_post_link( (int) $row['source_id'] );
+            }
+            $grouped[ $type ][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    /**
      * Retrieve all scan results (paginated).
      */
     public function get_results( int $page = 1, int $per_page = 50 ): array {

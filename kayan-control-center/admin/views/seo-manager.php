@@ -25,10 +25,20 @@
         </select>
     </div>
     <div class="kayan-cc-toolbar__actions">
+        <div class="kayan-cc-per-page">
+            <label for="kayan-cc-seo-per-page">عرض:</label>
+            <select id="kayan-cc-seo-per-page" class="kayan-cc-input">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span>في الصفحة</span>
+        </div>
+        <input type="text" id="kayan-cc-seo-bulk-template" class="kayan-cc-input" placeholder="قالب: {post_title} | {site_name}">
         <button id="kayan-cc-seo-bulk-apply" class="button button-primary" disabled>
             تطبيق على المحددة
         </button>
-        <input type="text" id="kayan-cc-seo-bulk-template" class="kayan-cc-input" placeholder="قالب: {post_title} | {site_name}" style="width:280px">
     </div>
 </div>
 
@@ -41,8 +51,10 @@
     </div>
 </div>
 
-<div id="kayan-cc-seo-posts-table">
-    <p class="kayan-cc-loading">جارٍ التحميل...</p>
+<div class="kayan-cc-table-scroll-wrap">
+    <div id="kayan-cc-seo-posts-table">
+        <p class="kayan-cc-loading">جارٍ التحميل...</p>
+    </div>
 </div>
 <div id="kayan-cc-seo-pagination" class="kayan-cc-pagination"></div>
 

@@ -24,11 +24,15 @@ class KayanCC_Ajax_Handler {
             'kayan_cc_update_number',
             'kayan_cc_delete_number',
             'kayan_cc_toggle_number',
+            'kayan_cc_hard_delete_number',
+            'kayan_cc_get_number_locations',
+            'kayan_cc_delete_from_location',
             // Scanner
             'kayan_cc_start_scan',
             'kayan_cc_scan_batch',
             'kayan_cc_scan_status',
             'kayan_cc_get_scan_results',
+            'kayan_cc_import_from_scan',
             // Assignment
             'kayan_cc_get_assignments',
             'kayan_cc_assign_number',
@@ -89,17 +93,81 @@ class KayanCC_Ajax_Handler {
 
     public function handle_kayan_cc_get_numbers(): void {
         $this->verify_nonce();
+        $per_page = min( 200, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
         $args = [
             'page'     => (int) ( $_GET['page'] ?? 1 ),
-            'per_page' => (int) ( $_GET['per_page'] ?? 20 ),
+            'per_page' => $per_page,
             'search'   => sanitize_text_field( $_GET['search'] ?? '' ),
             'status'   => sanitize_text_field( $_GET['status'] ?? '' ),
         ];
         $manager = KayanCC_Phone_Manager::get_instance();
         $result  = $manager->get_all( $args );
         foreach ( $result['numbers'] as &$n ) {
-            $n['usage_count'] = $manager->get_usage_count( (int) $n['id'] );
+            $n['usage_count']   = $manager->get_usage_count( (int) $n['id'] );
+            $stats              = $manager->get_occurrence_stats( $n['phone_e164'], $n['phone_number'] );
+            $n['occurrences']   = $stats['total_occurrences'];
+            $n['unique_posts']  = $stats['unique_posts'];
         }
+        $this->success( $result );
+    }
+
+    public function handle_kayan_cc_hard_delete_number(): void {
+        $this->verify_nonce();
+        $id     = (int) ( $_POST['id'] ?? 0 );
+        $result = KayanCC_Phone_Manager::get_instance()->hard_delete( $id );
+        is_wp_error( $result ) ? $this->wp_error( $result ) : $this->success( $result );
+    }
+
+    public function handle_kayan_cc_get_number_locations(): void {
+        $this->verify_nonce();
+        $number_id = (int) ( $_GET['number_id'] ?? 0 );
+        $number    = KayanCC_Phone_Manager::get_instance()->get( $number_id );
+        if ( ! $number ) { $this->error( 'الرقم غير موجود.' ); return; }
+
+        $scanner   = new KayanCC_Phone_Scanner();
+        $locations = $scanner->get_number_locations( $number['phone_e164'] );
+
+        // Also check whatsapp if different
+        if ( $number['whatsapp_e164'] && $number['whatsapp_e164'] !== $number['phone_e164'] ) {
+            $wa_locs = $scanner->get_number_locations( $number['whatsapp_e164'] );
+            foreach ( $wa_locs as $type => $rows ) {
+                if ( isset( $locations[ $type ] ) ) {
+                    $locations[ $type ] = array_merge( $locations[ $type ], $rows );
+                } else {
+                    $locations[ $type ] = $rows;
+                }
+            }
+        }
+
+        $this->success( [
+            'number'    => $number,
+            'locations' => $locations,
+        ] );
+    }
+
+    public function handle_kayan_cc_delete_from_location(): void {
+        $this->verify_nonce();
+        $number_id   = (int) ( $_POST['number_id']   ?? 0 );
+        $source_type = sanitize_text_field( $_POST['source_type'] ?? '' );
+        $source_id   = (int) ( $_POST['source_id']   ?? 0 );
+        $source_field= sanitize_text_field( $_POST['source_field'] ?? '' );
+
+        $number = KayanCC_Phone_Manager::get_instance()->get( $number_id );
+        if ( ! $number ) { $this->error( 'الرقم غير موجود.' ); return; }
+
+        $result = KayanCC_Phone_Manager::get_instance()->delete_from_location(
+            $number['phone_e164'],
+            $source_type,
+            $source_id,
+            $source_field
+        );
+        is_wp_error( $result ) ? $this->wp_error( $result ) : $this->success( [ 'deleted' => true ] );
+    }
+
+    public function handle_kayan_cc_import_from_scan(): void {
+        $this->verify_nonce();
+        $scanner = new KayanCC_Phone_Scanner();
+        $result  = $scanner->import_to_manager();
         $this->success( $result );
     }
 
@@ -247,9 +315,10 @@ class KayanCC_Ajax_Handler {
 
     public function handle_kayan_cc_get_seo_posts(): void {
         $this->verify_nonce();
+        $per_page = min( 200, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
         $args   = [
             'page'      => (int) ( $_GET['page']      ?? 1 ),
-            'per_page'  => (int) ( $_GET['per_page']  ?? 20 ),
+            'per_page'  => $per_page,
             'search'    => sanitize_text_field( $_GET['search'] ?? '' ),
             'post_type' => sanitize_text_field( $_GET['post_type'] ?? '' ) ?: null,
         ];

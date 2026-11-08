@@ -6,24 +6,41 @@
 <div class="kayan-cc-toolbar">
     <div class="kayan-cc-toolbar__search">
         <input type="text" id="kayan-cc-search-numbers" placeholder="بحث عن رقم أو اسم..." class="kayan-cc-input">
-        <select id="kayan-cc-filter-status">
+        <select id="kayan-cc-filter-status" class="kayan-cc-input">
             <option value="">جميع الحالات</option>
             <option value="active">نشط</option>
             <option value="inactive">متوقف</option>
         </select>
     </div>
     <div class="kayan-cc-toolbar__actions">
-        <button id="kayan-cc-export-csv" class="button">⬇ تصدير CSV</button>
-        <button id="kayan-cc-add-number" class="button button-primary">+ إضافة رقم جديد</button>
+        <div class="kayan-cc-per-page">
+            <label for="kayan-cc-numbers-per-page">عرض:</label>
+            <select id="kayan-cc-numbers-per-page" class="kayan-cc-input">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span>في الصفحة</span>
+        </div>
+        <button id="kayan-cc-export-csv" class="button">⬇ CSV</button>
+        <button id="kayan-cc-add-number" class="button button-primary">+ إضافة رقم</button>
     </div>
 </div>
 
-<div id="kayan-cc-numbers-table">
-    <p class="kayan-cc-loading">جارٍ التحميل...</p>
+<!-- Desktop table -->
+<div class="kayan-cc-table-scroll-wrap">
+    <div id="kayan-cc-numbers-table">
+        <p class="kayan-cc-loading">جارٍ التحميل...</p>
+    </div>
 </div>
+
+<!-- Mobile cards -->
+<div id="kayan-cc-numbers-cards" class="kayan-cc-mobile-cards" style="display:none"></div>
+
 <div id="kayan-cc-numbers-pagination" class="kayan-cc-pagination"></div>
 
-<!-- Add / Edit Modal -->
+<!-- ── Add / Edit Modal ─────────────────────────────────────── -->
 <div id="kayan-cc-number-modal" class="kayan-cc-modal" style="display:none">
     <div class="kayan-cc-modal__overlay"></div>
     <div class="kayan-cc-modal__dialog">
@@ -100,45 +117,58 @@
     </div>
 </div>
 
-<script type="text/template" id="tmpl-numbers-table">
-<table class="kayan-cc-table">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>الاسم</th>
-            <th>رقم الاتصال</th>
-            <th>رقم واتساب</th>
-            <th>الدولة</th>
-            <th>الاستخدامات</th>
-            <th>الحالة</th>
-            <th>الإجراءات</th>
-        </tr>
-    </thead>
-    <tbody>
-        {{#numbers}}
-        <tr data-id="{{id}}">
-            <td>{{id}}</td>
-            <td><strong>{{name}}</strong></td>
-            <td class="kayan-cc-monospace">{{phone_number}}</td>
-            <td class="kayan-cc-monospace">{{whatsapp_number}}</td>
-            <td>{{country}}</td>
-            <td>{{usage_count}}</td>
-            <td>
-                <span class="kayan-cc-badge kayan-cc-badge--{{status}}">
-                    {{status_label}}
-                </span>
-            </td>
-            <td class="kayan-cc-actions">
-                <button class="button button-small kayan-cc-edit-number" data-id="{{id}}">تعديل</button>
-                <button class="button button-small kayan-cc-toggle-number" data-id="{{id}}">
-                    {{toggle_label}}
-                </button>
-                <button class="button button-small button-link-delete kayan-cc-delete-number" data-id="{{id}}">حذف</button>
-            </td>
-        </tr>
-        {{/numbers}}
-    </tbody>
-</table>
-</script>
+<!-- ── Number Locations Modal ───────────────────────────────── -->
+<div id="kayan-cc-locations-modal" class="kayan-cc-modal kayan-cc-modal--wide" style="display:none">
+    <div class="kayan-cc-modal__overlay"></div>
+    <div class="kayan-cc-modal__dialog">
+        <div class="kayan-cc-modal__header">
+            <h3>📍 أماكن الظهور: <span id="kayan-cc-loc-number-name"></span></h3>
+            <button class="kayan-cc-modal__close">✕</button>
+        </div>
+        <div class="kayan-cc-modal__body">
+            <div id="kayan-cc-locations-summary" class="kayan-cc-summary-box" style="margin-bottom:14px"></div>
+
+            <div class="kayan-cc-locations-tabs">
+                <button class="kayan-cc-tab-btn kayan-cc-tab-btn--active" data-tab="loc-posts">المقالات</button>
+                <button class="kayan-cc-tab-btn" data-tab="loc-meta">الحقول</button>
+                <button class="kayan-cc-tab-btn" data-tab="loc-options">الإعدادات</button>
+            </div>
+
+            <div id="loc-posts"   class="kayan-cc-tab-pane"><p class="kayan-cc-loading">جارٍ التحميل...</p></div>
+            <div id="loc-meta"    class="kayan-cc-tab-pane" style="display:none"><p class="kayan-cc-loading">جارٍ التحميل...</p></div>
+            <div id="loc-options" class="kayan-cc-tab-pane" style="display:none"><p class="kayan-cc-loading">جارٍ التحميل...</p></div>
+
+            <div class="kayan-cc-notice kayan-cc-notice--warning" style="margin-top:16px">
+                <strong>تحذير:</strong> الحذف من مكان محدد يزيل الرقم من محتوى تلك المقالة/الحقل فقط.
+                "الحذف الكامل" يحذف الرقم من قاعدة البيانات ومن جميع أماكن ظهوره في الموقع.
+            </div>
+        </div>
+        <div class="kayan-cc-modal__footer">
+            <button id="kayan-cc-hard-delete-number" class="button kayan-cc-btn--danger">
+                🗑 حذف الرقم نهائياً من كل مكان
+            </button>
+            <button class="kayan-cc-modal__close button">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Hide confirmation modal ─────────────────────────────── -->
+<div id="kayan-cc-hide-confirm-modal" class="kayan-cc-modal" style="display:none">
+    <div class="kayan-cc-modal__overlay"></div>
+    <div class="kayan-cc-modal__dialog">
+        <div class="kayan-cc-modal__header">
+            <h3>إخفاء الرقم</h3>
+            <button class="kayan-cc-modal__close">✕</button>
+        </div>
+        <div class="kayan-cc-modal__body">
+            <p>هل تريد إخفاء الرقم؟ سيتوقف عن الظهور في الموقع لكن بياناته ستبقى محفوظة.</p>
+            <input type="hidden" id="kayan-cc-hide-number-id">
+        </div>
+        <div class="kayan-cc-modal__footer">
+            <button id="kayan-cc-hide-confirm-btn" class="button button-primary">إخفاء</button>
+            <button class="kayan-cc-modal__close button">إلغاء</button>
+        </div>
+    </div>
+</div>
 
 <?php include KAYAN_CC_PLUGIN_DIR . 'admin/partials/footer.php'; ?>

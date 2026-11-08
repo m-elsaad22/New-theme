@@ -1,8 +1,7 @@
 /**
  * KAYAN Control Center – Admin JavaScript
- * Handles all AJAX interactions for the admin UI.
  */
-/* global jQuery, KayanCC, ajaxurl */
+/* global jQuery, KayanCC */
 
 ( function( $ ) {
     'use strict';
@@ -13,45 +12,44 @@
 
     function ajax( action, data, method ) {
         method = method || 'POST';
-        var params = $.extend( {}, data, { action: action, nonce: CC.nonce } );
         return $.ajax( {
             url:    CC.ajax_url,
             method: method,
-            data:   params,
+            data:   $.extend( {}, data, { action: action, nonce: CC.nonce } ),
         } );
     }
-
-    function ajaxGet( action, data ) {
-        return ajax( action, data, 'GET' );
-    }
+    function ajaxGet( action, data ) { return ajax( action, data, 'GET' ); }
 
     function toast( msg, type ) {
         type = type || 'success';
-        var $t = $( '<div class="kayan-cc-toast kayan-cc-toast--' + type + '">' + msg + '</div>' );
+        var $t = $( '<div class="kayan-cc-toast kayan-cc-toast--' + type + '">' + escHtml( msg ) + '</div>' );
         $( 'body' ).append( $t );
         setTimeout( function() { $t.fadeOut( 400, function() { $t.remove(); } ); }, 3500 );
     }
 
-    function confirm( msg ) {
-        return window.confirm( msg );
+    function escHtml( str ) {
+        return String( str )
+            .replace( /&/g, '&amp;' )
+            .replace( /</g, '&lt;' )
+            .replace( />/g, '&gt;' )
+            .replace( /"/g, '&quot;' );
+    }
+    function escAttr( str ) {
+        return String( str ).replace( /"/g, '&quot;' ).replace( /'/g, '&#039;' );
     }
 
-    function renderPagination( $container, paging, onPageClick ) {
-        if ( paging.total_pages <= 1 ) { $container.empty(); return; }
-        var html = '';
-        for ( var i = 1; i <= paging.total_pages; i++ ) {
-            html += '<button class="page-btn' + ( i === paging.current_page ? ' active' : '' ) +
-                    '" data-page="' + i + '">' + i + '</button>';
-        }
-        $container.html( html );
-        $container.find( '.page-btn' ).on( 'click', function() {
-            onPageClick( parseInt( $( this ).data( 'page' ), 10 ) );
-        } );
+    function debounce( fn, delay ) {
+        var t;
+        return function() {
+            var ctx = this, args = arguments;
+            clearTimeout( t );
+            t = setTimeout( function() { fn.apply( ctx, args ); }, delay );
+        };
     }
 
-    function statusLabel( status ) {
-        return status === 'active' ? 'نشط' : 'متوقف';
-    }
+    function isMobile() { return window.innerWidth <= 782; }
+
+    function statusLabel( s ) { return s === 'active' ? 'نشط' : 'متوقف'; }
 
     function resultTypeLabel( type ) {
         var labels = {
@@ -65,66 +63,148 @@
         return labels[ type ] || type;
     }
 
-    /* ── Modals ─────────────────────────────────────────────────── */
+    function renderPagination( $container, paging, onPageClick ) {
+        if ( ! paging || paging.total_pages <= 1 ) { $container.empty(); return; }
+        var html = '<span style="font-size:12px;color:#7f8c8d;margin-left:8px">' +
+                   paging.total + ' عنصر</span> ';
+        var start = Math.max( 1, paging.current_page - 2 );
+        var end   = Math.min( paging.total_pages, paging.current_page + 2 );
+        if ( start > 1 )              html += '<button class="page-btn" data-page="1">1</button><span>…</span>';
+        for ( var i = start; i <= end; i++ ) {
+            html += '<button class="page-btn' + ( i === paging.current_page ? ' active' : '' ) +
+                    '" data-page="' + i + '">' + i + '</button>';
+        }
+        if ( end < paging.total_pages ) html += '<span>…</span><button class="page-btn" data-page="' + paging.total_pages + '">' + paging.total_pages + '</button>';
+        $container.html( html );
+        $container.find( '.page-btn' ).on( 'click', function() {
+            onPageClick( parseInt( $( this ).data( 'page' ), 10 ) );
+        } );
+    }
 
+    /* ── Modals ─────────────────────────────────────────────────── */
     $( document ).on( 'click', '.kayan-cc-modal__overlay, .kayan-cc-modal__close', function() {
         $( this ).closest( '.kayan-cc-modal' ).hide();
     } );
 
-    /* ── Toasts on WP admin notices ─────────────────────────────── */
-    // (standard notices still work; toasts are for AJAX feedback)
+    /* ── Tabs ───────────────────────────────────────────────────── */
+    $( document ).on( 'click', '.kayan-cc-tab-btn', function() {
+        var $modal = $( this ).closest( '.kayan-cc-modal__dialog' );
+        $modal.find( '.kayan-cc-tab-btn' ).removeClass( 'kayan-cc-tab-btn--active' );
+        $( this ).addClass( 'kayan-cc-tab-btn--active' );
+        $modal.find( '.kayan-cc-tab-pane' ).hide();
+        $( '#' + $( this ).data( 'tab' ) ).show();
+    } );
 
     /* ════════════════════════════════════════════════════════════
        PHONE MANAGER
     ════════════════════════════════════════════════════════════ */
-    var $numbersTable  = $( '#kayan-cc-numbers-table' );
-    var $numbersPaging = $( '#kayan-cc-numbers-pagination' );
     var numbersPage    = 1;
+    var numbersPerPage = 20;
     var numbersSearch  = '';
     var numbersStatus  = '';
 
     function loadNumbers() {
-        if ( ! $numbersTable.length ) return;
-        ajaxGet( 'kayan_cc_get_numbers', { page: numbersPage, search: numbersSearch, status: numbersStatus } )
-            .done( function( res ) {
-                if ( ! res.success ) { toast( CC.i18n.error, 'error' ); return; }
+        if ( ! $( '#kayan-cc-numbers-table' ).length ) return;
+        ajaxGet( 'kayan_cc_get_numbers', {
+            page:     numbersPage,
+            per_page: numbersPerPage,
+            search:   numbersSearch,
+            status:   numbersStatus,
+        } ).done( function( res ) {
+            if ( ! res.success ) { toast( CC.i18n.error, 'error' ); return; }
+            if ( isMobile() ) {
+                renderNumberCards( res.data );
+            } else {
                 renderNumbersTable( res.data );
-            } )
-            .fail( function() { toast( CC.i18n.error, 'error' ); } );
+            }
+        } ).fail( function() { toast( CC.i18n.error, 'error' ); } );
     }
 
+    /* ── Desktop table ── */
     function renderNumbersTable( data ) {
+        $( '#kayan-cc-numbers-cards' ).hide();
+        $( '#kayan-cc-numbers-table' ).show();
+
         if ( ! data.numbers.length ) {
-            $numbersTable.html( '<p class="kayan-cc-empty">' + CC.i18n.no_results + '</p>' );
-            $numbersPaging.empty();
+            $( '#kayan-cc-numbers-table' ).html( '<p class="kayan-cc-empty">' + CC.i18n.no_results + '</p>' );
+            $( '#kayan-cc-numbers-pagination' ).empty();
             return;
         }
+
         var rows = data.numbers.map( function( n ) {
+            var occBadge = n.occurrences > 0
+                ? '<button class="kayan-cc-occurrences-badge kayan-cc-open-locations" data-id="' + n.id + '">' +
+                  '📍 ' + n.occurrences + ' مرة</button>' +
+                  '<br><span class="kayan-cc-posts-count">' + n.unique_posts + ' مقالة</span>'
+                : '<span style="color:#ccc">-</span>';
+
             return '<tr data-id="' + n.id + '">' +
                 '<td>' + n.id + '</td>' +
                 '<td><strong>' + escHtml( n.name ) + '</strong></td>' +
                 '<td class="kayan-cc-monospace">' + escHtml( n.phone_number ) + '</td>' +
                 '<td class="kayan-cc-monospace">' + escHtml( n.whatsapp_number ) + '</td>' +
                 '<td>' + escHtml( n.country ) + '</td>' +
-                '<td>' + n.usage_count + '</td>' +
+                '<td style="text-align:center">' + n.usage_count + '</td>' +
+                '<td style="text-align:center">' + occBadge + '</td>' +
                 '<td><span class="kayan-cc-badge kayan-cc-badge--' + n.status + '">' + statusLabel( n.status ) + '</span></td>' +
                 '<td class="kayan-cc-actions">' +
                     '<button class="button button-small kayan-cc-edit-number" data-id="' + n.id + '">تعديل</button> ' +
-                    '<button class="button button-small kayan-cc-toggle-number" data-id="' + n.id + '">' + ( n.status === 'active' ? 'تعطيل' : 'تفعيل' ) + '</button> ' +
+                    '<button class="button button-small kayan-cc-hide-number" data-id="' + n.id + '">' + ( n.status === 'active' ? 'إخفاء' : 'إظهار' ) + '</button> ' +
                     '<button class="button button-small button-link-delete kayan-cc-delete-number" data-id="' + n.id + '">حذف</button>' +
                 '</td>' +
                 '</tr>';
         } ).join( '' );
 
-        $numbersTable.html(
-            '<table class="kayan-cc-table"><thead><tr>' +
-            '<th>#</th><th>الاسم</th><th>رقم الاتصال</th><th>رقم واتساب</th><th>الدولة</th><th>الاستخدامات</th><th>الحالة</th><th>الإجراءات</th>' +
+        $( '#kayan-cc-numbers-table' ).html(
+            '<table class="kayan-cc-table kayan-cc-table--responsive">' +
+            '<thead><tr>' +
+            '<th>#</th><th>الاسم</th><th>رقم الاتصال</th><th>رقم واتساب</th>' +
+            '<th>الدولة</th><th>التعيينات</th><th>الظهورات</th><th>الحالة</th><th>الإجراءات</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table>'
         );
-        renderPagination( $numbersPaging, data.paging, function( p ) { numbersPage = p; loadNumbers(); } );
+        renderPagination( $( '#kayan-cc-numbers-pagination' ), data.paging, function( p ) { numbersPage = p; loadNumbers(); } );
     }
 
-    // Search & filter
+    /* ── Mobile cards ── */
+    function renderNumberCards( data ) {
+        $( '#kayan-cc-numbers-table' ).hide();
+        var $cards = $( '#kayan-cc-numbers-cards' );
+
+        if ( ! data.numbers.length ) {
+            $cards.html( '<p class="kayan-cc-empty">' + CC.i18n.no_results + '</p>' ).show();
+            $( '#kayan-cc-numbers-pagination' ).empty();
+            return;
+        }
+
+        var html = data.numbers.map( function( n ) {
+            var occStr = n.occurrences > 0 ? n.occurrences + ' مرة في ' + n.unique_posts + ' مقالة' : 'لا ظهورات مسجلة';
+            return '<div class="kayan-cc-number-card ' + ( n.status === 'inactive' ? 'inactive' : '' ) + '" data-id="' + n.id + '">' +
+                '<div class="kayan-cc-number-card__header">' +
+                    '<div class="kayan-cc-number-card__name">' + escHtml( n.name ) + '</div>' +
+                    '<span class="kayan-cc-badge kayan-cc-badge--' + n.status + '">' + statusLabel( n.status ) + '</span>' +
+                '</div>' +
+                '<div class="kayan-cc-number-card__nums">' +
+                    ( n.phone_number ? '📞 ' + escHtml( n.phone_number ) + '<br>' : '' ) +
+                    ( n.whatsapp_number ? '💬 ' + escHtml( n.whatsapp_number ) : '' ) +
+                '</div>' +
+                '<div class="kayan-cc-number-card__stats">' +
+                    ( n.occurrences > 0
+                        ? '<button class="kayan-cc-occurrences-badge kayan-cc-open-locations" data-id="' + n.id + '">📍 ' + occStr + '</button>'
+                        : '<span style="font-size:12px;color:#aaa">لا ظهورات</span>' ) +
+                '</div>' +
+                '<div class="kayan-cc-number-card__actions">' +
+                    '<button class="button button-small kayan-cc-edit-number" data-id="' + n.id + '">تعديل</button>' +
+                    '<button class="button button-small kayan-cc-hide-number" data-id="' + n.id + '">' + ( n.status === 'active' ? 'إخفاء' : 'إظهار' ) + '</button>' +
+                    '<button class="button button-small button-link-delete kayan-cc-delete-number" data-id="' + n.id + '">حذف</button>' +
+                '</div>' +
+                '</div>';
+        } ).join( '' );
+
+        $cards.html( html ).show();
+        renderPagination( $( '#kayan-cc-numbers-pagination' ), data.paging, function( p ) { numbersPage = p; loadNumbers(); } );
+    }
+
+    /* ── Filters & search ── */
     $( document ).on( 'input', '#kayan-cc-search-numbers', debounce( function() {
         numbersSearch = $( this ).val();
         numbersPage   = 1;
@@ -137,17 +217,23 @@
         loadNumbers();
     } );
 
-    // Add
+    $( document ).on( 'change', '#kayan-cc-numbers-per-page', function() {
+        numbersPerPage = parseInt( $( this ).val(), 10 );
+        numbersPage    = 1;
+        loadNumbers();
+    } );
+
+    /* ── Add ── */
     $( document ).on( 'click', '#kayan-cc-add-number', function() {
         resetNumberForm();
         $( '#kayan-cc-modal-title' ).text( 'إضافة رقم جديد' );
         $( '#kayan-cc-number-modal' ).show();
     } );
 
-    // Edit
+    /* ── Edit ── */
     $( document ).on( 'click', '.kayan-cc-edit-number', function() {
         var id = $( this ).data( 'id' );
-        ajax( 'kayan_cc_get_numbers', { page: 1, per_page: 1, search: id } )
+        ajaxGet( 'kayan_cc_get_numbers', { page: 1, per_page: 1, search: id } )
             .done( function( res ) {
                 var n = res.data && res.data.numbers && res.data.numbers[0];
                 if ( ! n ) return;
@@ -162,48 +248,46 @@
                 $( '#kayan-cc-field-call-enabled' ).prop( 'checked', n.call_enabled == 1 );
                 $( '#kayan-cc-field-wa-enabled' ).prop( 'checked', n.wa_enabled == 1 );
                 $( '#kayan-cc-field-status' ).val( n.status );
-                $( '#kayan-cc-modal-title' ).text( 'تعديل الرقم' );
+                $( '#kayan-cc-modal-title' ).text( 'تعديل الرقم: ' + n.name );
                 $( '#kayan-cc-number-modal' ).show();
             } );
     } );
 
-    // Save
+    /* ── Save ── */
     $( document ).on( 'click', '#kayan-cc-save-number', function() {
         var id   = $( '#kayan-cc-number-id' ).val();
-        var form = $( '#kayan-cc-number-form' ).serializeArray();
         var data = {};
-        $.each( form, function( i, f ) { data[ f.name ] = f.value; } );
+        $( '#kayan-cc-number-form' ).serializeArray().forEach( function( f ) { data[ f.name ] = f.value; } );
         if ( ! $( '#kayan-cc-field-call-enabled' ).is( ':checked' ) ) data.call_enabled = 0;
-        if ( ! $( '#kayan-cc-field-wa-enabled' ).is( ':checked' ) ) data.wa_enabled = 0;
-
-        var action = id ? 'kayan_cc_update_number' : 'kayan_cc_add_number';
-        ajax( action, data )
+        if ( ! $( '#kayan-cc-field-wa-enabled' ).is( ':checked' ) )   data.wa_enabled   = 0;
+        ajax( id ? 'kayan_cc_update_number' : 'kayan_cc_add_number', data )
             .done( function( res ) {
-                if ( res.success ) {
-                    toast( CC.i18n.saved );
-                    $( '#kayan-cc-number-modal' ).hide();
-                    loadNumbers();
-                } else {
-                    toast( res.data.message || CC.i18n.error, 'error' );
-                }
-            } )
-            .fail( function() { toast( CC.i18n.error, 'error' ); } );
+                if ( res.success ) { toast( CC.i18n.saved ); $( '#kayan-cc-number-modal' ).hide(); loadNumbers(); }
+                else { toast( res.data.message || CC.i18n.error, 'error' ); }
+            } );
     } );
 
-    // Toggle
-    $( document ).on( 'click', '.kayan-cc-toggle-number', function() {
+    /* ── Hide (toggle status) ── */
+    $( document ).on( 'click', '.kayan-cc-hide-number', function() {
         var id = $( this ).data( 'id' );
+        $( '#kayan-cc-hide-number-id' ).val( id );
+        $( '#kayan-cc-hide-confirm-modal' ).show();
+    } );
+
+    $( document ).on( 'click', '#kayan-cc-hide-confirm-btn', function() {
+        var id = $( '#kayan-cc-hide-number-id' ).val();
         ajax( 'kayan_cc_toggle_number', { id: id } )
             .done( function( res ) {
+                $( '#kayan-cc-hide-confirm-modal' ).hide();
                 if ( res.success ) { loadNumbers(); }
                 else { toast( res.data.message, 'error' ); }
             } );
     } );
 
-    // Delete
+    /* ── Soft delete (DB only) ── */
     $( document ).on( 'click', '.kayan-cc-delete-number', function() {
-        if ( ! confirm( CC.i18n.confirm_delete ) ) return;
         var id = $( this ).data( 'id' );
+        if ( ! window.confirm( 'هل تريد حذف الرقم من قاعدة البيانات فقط (دون حذفه من محتوى الموقع)؟\nللحذف الكامل من الموقع استخدم زر "حذف الرقم نهائياً" في صفحة الأماكن.' ) ) return;
         ajax( 'kayan_cc_delete_number', { id: id } )
             .done( function( res ) {
                 if ( res.success ) { toast( CC.i18n.deleted ); loadNumbers(); }
@@ -211,9 +295,136 @@
             } );
     } );
 
-    // Export CSV
+    /* ── Export CSV ── */
     $( document ).on( 'click', '#kayan-cc-export-csv', function() {
         window.location.href = CC.ajax_url + '?action=kayan_cc_export_numbers_csv&nonce=' + CC.nonce;
+    } );
+
+    /* ── Open Locations Modal ── */
+    $( document ).on( 'click', '.kayan-cc-open-locations', function() {
+        var id = $( this ).data( 'id' );
+        $( '#kayan-cc-hard-delete-number' ).data( 'id', id );
+        $( '#kayan-cc-locations-modal' ).show();
+        $( '#kayan-cc-loc-number-name' ).text( CC.i18n.loading );
+        $( '#kayan-cc-locations-summary' ).text( CC.i18n.loading );
+        $( '#loc-posts, #loc-meta, #loc-options' ).html( '<p class="kayan-cc-loading">جارٍ التحميل...</p>' );
+
+        // Reset tabs
+        $( '.kayan-cc-tab-btn' ).removeClass( 'kayan-cc-tab-btn--active' ).first().addClass( 'kayan-cc-tab-btn--active' );
+        $( '.kayan-cc-tab-pane' ).hide();
+        $( '#loc-posts' ).show();
+
+        ajaxGet( 'kayan_cc_get_number_locations', { number_id: id } )
+            .done( function( res ) {
+                if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
+                renderLocations( res.data );
+            } );
+    } );
+
+    function renderLocations( data ) {
+        var n         = data.number;
+        var locations = data.locations || {};
+
+        $( '#kayan-cc-loc-number-name' ).text( n.name + ' (' + n.phone_number + ')' );
+
+        // Summary
+        var total = 0;
+        $.each( locations, function( k, v ) { total += v.length; } );
+        $( '#kayan-cc-locations-summary' ).html(
+            '<strong>الرقم:</strong> ' + escHtml( n.phone_e164 ) + ' &nbsp; ' +
+            '<strong>إجمالي الظهورات:</strong> ' + total
+        );
+
+        // Posts tab (post_content + post_title)
+        var postRows = [];
+        $.each( [ 'post_content', 'post_title' ], function( i, type ) {
+            if ( locations[ type ] ) {
+                if ( postRows.length ) postRows.push( '<div class="kayan-cc-loc-group-header">' + ( type === 'post_content' ? 'محتوى المقالات' : 'عنوان المقالات' ) + '</div>' );
+                $.each( locations[ type ], function( j, row ) {
+                    postRows.push( buildLocItem( row, n.id, type ) );
+                } );
+            }
+        } );
+        $( '#loc-posts' ).html( postRows.length ? postRows.join( '' ) : '<p class="kayan-cc-empty">لا ظهورات في محتوى المقالات.</p>' );
+
+        // Meta tab
+        var metaRows = [];
+        if ( locations['post_meta'] ) {
+            $.each( locations['post_meta'], function( j, row ) {
+                metaRows.push( buildLocItem( row, n.id, 'post_meta' ) );
+            } );
+        }
+        $( '#loc-meta' ).html( metaRows.length ? metaRows.join( '' ) : '<p class="kayan-cc-empty">لا ظهورات في الحقول المخصصة.</p>' );
+
+        // Options tab (widget, option, menu)
+        var optRows = [];
+        $.each( [ 'option', 'widget', 'menu' ], function( i, type ) {
+            if ( locations[ type ] ) {
+                $.each( locations[ type ], function( j, row ) {
+                    optRows.push( buildLocItem( row, n.id, type ) );
+                } );
+            }
+        } );
+        $( '#loc-options' ).html( optRows.length ? optRows.join( '' ) : '<p class="kayan-cc-empty">لا ظهورات في الإعدادات.</p>' );
+    }
+
+    function buildLocItem( row, numberId, sourceType ) {
+        var canDelete = row.source_id > 0 && ( sourceType === 'post_content' || sourceType === 'post_title' || sourceType === 'post_meta' );
+        var editLink  = row.edit_url ? '<a href="' + escHtml( row.edit_url ) + '" target="_blank" class="button button-small">✏ تعديل</a>' : '';
+        var delBtn    = canDelete
+            ? '<button class="button button-small button-link-delete kayan-cc-delete-loc" ' +
+              'data-number-id="' + numberId + '" ' +
+              'data-source-type="' + escAttr( sourceType ) + '" ' +
+              'data-source-id="' + row.source_id + '" ' +
+              'data-source-field="' + escAttr( row.source_field ) + '">' +
+              'حذف من هنا</button>'
+            : '<small style="color:#aaa">لا يمكن الحذف تلقائياً</small>';
+
+        return '<div class="kayan-cc-loc-item">' +
+            '<div class="kayan-cc-loc-item__info">' +
+                '<div class="kayan-cc-loc-item__title">' + escHtml( row.post_title || row.source_field ) + '</div>' +
+                '<div class="kayan-cc-loc-item__meta">' +
+                    escHtml( row.source_field ) + ( row.source_id > 0 ? ' &nbsp;|&nbsp; #' + row.source_id : '' ) +
+                '</div>' +
+                '<div class="kayan-cc-location-value">' + escHtml( row.raw_value.substring( 0, 80 ) ) + '</div>' +
+            '</div>' +
+            '<div class="kayan-cc-loc-item__actions">' + editLink + ' ' + delBtn + '</div>' +
+            '</div>';
+    }
+
+    /* ── Delete from specific location ── */
+    $( document ).on( 'click', '.kayan-cc-delete-loc', function() {
+        if ( ! window.confirm( 'هل تريد حذف الرقم من هذا المكان فقط؟' ) ) return;
+        var $btn = $( this );
+        ajax( 'kayan_cc_delete_from_location', {
+            number_id:    $btn.data( 'number-id' ),
+            source_type:  $btn.data( 'source-type' ),
+            source_id:    $btn.data( 'source-id' ),
+            source_field: $btn.data( 'source-field' ),
+        } ).done( function( res ) {
+            if ( res.success ) {
+                toast( 'تم الحذف من هذا المكان.' );
+                $btn.closest( '.kayan-cc-loc-item' ).fadeOut( 300 );
+            } else {
+                toast( res.data.message, 'error' );
+            }
+        } );
+    } );
+
+    /* ── Hard delete (everywhere + DB) ── */
+    $( document ).on( 'click', '#kayan-cc-hard-delete-number', function() {
+        if ( ! window.confirm( 'تحذير: سيتم حذف الرقم نهائياً من قاعدة البيانات ومن جميع أماكن ظهوره في الموقع.\nهذه العملية قابلة للتراجع من سجل التعديلات.\nهل أنت متأكد؟' ) ) return;
+        var id = $( this ).data( 'id' );
+        ajax( 'kayan_cc_hard_delete_number', { id: id } )
+            .done( function( res ) {
+                if ( res.success ) {
+                    toast( 'تم الحذف الكامل. ' + ( res.data.replacement_results && res.data.replacement_results.phone ? res.data.replacement_results.phone.posts_changed + ' مقالة تأثرت.' : '' ) );
+                    $( '#kayan-cc-locations-modal' ).hide();
+                    loadNumbers();
+                } else {
+                    toast( res.data.message, 'error' );
+                }
+            } );
     } );
 
     function resetNumberForm() {
@@ -236,12 +447,13 @@
     var scanPhases    = { posts: 20, options: 60, widgets: 75, menus: 85, done: 100 };
 
     $( document ).on( 'click', '#kayan-cc-start-scan', function() {
-        if ( ! confirm( 'سيبدأ فحص شامل للموقع. هذا قد يستغرق دقيقة أو أكثر. هل تريد المتابعة؟' ) ) return;
+        if ( ! window.confirm( 'سيبدأ فحص شامل للموقع. هذا قد يستغرق دقيقة أو أكثر. هل تريد المتابعة؟' ) ) return;
         ajax( 'kayan_cc_start_scan', {} )
             .done( function( res ) {
                 if ( ! res.success ) return;
                 $scanProgress.show();
                 $scanResults.hide();
+                $( '#kayan-cc-scan-import-banner' ).hide();
                 $scanStatus.text( 'جارٍ الفحص...' );
                 processScanBatch();
             } );
@@ -254,7 +466,7 @@
                 var phase    = res.data.status.phase || 'posts';
                 var progress = scanPhases[ phase ] || 10;
                 $( '#kayan-cc-progress-fill' ).css( 'width', progress + '%' );
-                $( '#kayan-cc-progress-text' ).text( 'مرحلة: ' + phase );
+                $( '#kayan-cc-progress-text' ).text( 'المرحلة: ' + phase );
 
                 if ( res.data.done ) {
                     $scanStatus.text( 'اكتمل الفحص ✓' );
@@ -262,6 +474,7 @@
                     setTimeout( function() { $scanProgress.hide(); }, 600 );
                     $scanResults.show();
                     loadScanResults( 1 );
+                    showImportBanner();
                 } else {
                     setTimeout( processScanBatch, 200 );
                 }
@@ -269,8 +482,49 @@
             .fail( function() { $scanStatus.text( 'حدث خطأ أثناء الفحص.' ); } );
     }
 
-    var scanResultsPage = 1;
+    function showImportBanner() {
+        // Fetch count of confirmed numbers from scan
+        ajaxGet( 'kayan_cc_get_scan_results', { page: 1, per_page: 1 } )
+            .done( function() {
+                var $banner = $( '#kayan-cc-scan-import-banner' );
+                if ( $banner.children().length ) { $banner.show(); return; }
+                $banner.html(
+                    '<div class="kayan-cc-import-banner">' +
+                        '<div><h3>✅ اكتمل الفحص</h3>' +
+                        '<p>يمكنك الآن استيراد الأرقام المكتشفة إلى مدير الأرقام.</p></div>' +
+                        '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+                        '<button id="kayan-cc-import-to-manager" class="button">📥 استيراد الأرقام</button>' +
+                        '<a href="' + escHtml( window.location.origin + '/wp-admin/admin.php?page=kayan-cc-phone-manager' ) + '" class="button">📞 مدير الأرقام</a>' +
+                        '</div></div>' +
+                        '<div id="kayan-cc-import-result" class="kayan-cc-import-results" style="display:none"></div>'
+                ).show();
+            } );
+    }
 
+    /* ── Import scan results to manager ── */
+    $( document ).on( 'click', '#kayan-cc-import-to-manager', function() {
+        var $btn = $( this );
+        $btn.prop( 'disabled', true ).text( 'جارٍ الاستيراد...' );
+        ajax( 'kayan_cc_import_from_scan', {} )
+            .done( function( res ) {
+                $btn.prop( 'disabled', false ).text( '📥 استيراد الأرقام' );
+                if ( ! res.success ) { toast( CC.i18n.error, 'error' ); return; }
+                var d = res.data;
+                $( '#kayan-cc-import-result' ).html(
+                    '<div class="kayan-cc-notice kayan-cc-notice--success">' +
+                    '<span class="kcc-new">✓ تم استيراد ' + d.imported + ' رقم جديد.</span> ' +
+                    '<span class="kcc-skip">(' + d.skipped + ' رقم موجود مسبقاً)</span> ' +
+                    '<a href="' + escHtml( window.location.origin + '/wp-admin/admin.php?page=kayan-cc-phone-manager' ) + '">فتح مدير الأرقام</a>' +
+                    '</div>'
+                ).show();
+            } )
+            .fail( function() {
+                $btn.prop( 'disabled', false ).text( '📥 استيراد الأرقام' );
+                toast( CC.i18n.error, 'error' );
+            } );
+    } );
+
+    var scanResultsPage = 1;
     function loadScanResults( page ) {
         if ( ! $( '#kayan-cc-scan-results-table' ).length ) return;
         scanResultsPage = page;
@@ -287,19 +541,22 @@
             return;
         }
         var rows = data.results.map( function( r ) {
+            var postLink = r.source_id > 0
+                ? '<a href="' + escHtml( '/wp-admin/post.php?post=' + r.source_id + '&action=edit' ) + '" target="_blank">' + r.source_id + '</a>'
+                : '-';
             return '<tr>' +
                 '<td class="kayan-cc-monospace">' + escHtml( r.raw_value ) + '</td>' +
                 '<td class="kayan-cc-monospace">' + escHtml( r.normalized ) + '</td>' +
                 '<td><span class="kayan-cc-badge kayan-cc-badge--' + r.result_type + '">' + resultTypeLabel( r.result_type ) + '</span></td>' +
                 '<td><small>' + escHtml( r.source_field ) + '</small></td>' +
-                '<td>' + ( r.source_id > 0 ? '<a href="' + escHtml( window.location.origin + '/wp-admin/post.php?post=' + r.source_id + '&action=edit' ) + '" target="_blank">' + r.source_id + '</a>' : '-' ) + '</td>' +
+                '<td>' + postLink + '</td>' +
                 '</tr>';
         } ).join( '' );
 
         $( '#kayan-cc-scan-results-table' ).html(
-            '<table class="kayan-cc-table">' +
-            '<thead><tr><th>القيمة</th><th>الرقم الموحد</th><th>النوع</th><th>المصدر</th><th>رقم المقالة</th></tr></thead>' +
-            '<tbody>' + rows + '</tbody></table>'
+            '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr>' +
+            '<th>القيمة</th><th>الرقم الموحد</th><th>النوع</th><th>المصدر</th><th>المقالة</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table></div>'
         );
         renderPagination( $( '#kayan-cc-scan-pagination' ), data.paging, loadScanResults );
     }
@@ -309,45 +566,44 @@
     /* ════════════════════════════════════════════════════════════
        ASSIGNMENT
     ════════════════════════════════════════════════════════════ */
-    var $assignScopeType = $( '#kayan-cc-assign-scope-type' );
-
-    $assignScopeType.on( 'change', function() {
+    $( document ).on( 'change', '#kayan-cc-assign-scope-type', function() {
         var val = $( this ).val();
         $( '#kayan-cc-scope-post-type' ).toggle( val === 'post_type' );
         $( '#kayan-cc-scope-taxonomy' ).toggle( val === 'taxonomy_term' );
         $( '#kayan-cc-scope-post' ).toggle( val === 'post' );
     } );
 
-    // Load terms when taxonomy changes
     $( document ).on( 'change', '#kayan-cc-assign-taxonomy', function() {
         loadTermsFor( $( this ).val(), $( '#kayan-cc-assign-term' ) );
     } );
 
     function loadTermsFor( taxonomy, $select ) {
         $select.html( '<option value="">جارٍ التحميل...</option>' );
-        $.get( ajaxurl, { action: 'kayan_cc_get_assignments', nonce: CC.nonce, _type: 'terms', taxonomy: taxonomy } )
-            .done( function() {
-                // Use WP REST API for terms
-                $.get( window.location.origin + '/wp-json/wp/v2/' + taxonomy + '?per_page=100&_fields=id,name' )
+        $.get( '/wp-json/wp/v2/' + taxonomy + '?per_page=100&_fields=id,name' )
+            .done( function( terms ) {
+                var opts = '<option value="">-- اختر القسم --</option>';
+                $.each( terms, function( i, t ) { opts += '<option value="' + t.id + '">' + escHtml( t.name ) + '</option>'; } );
+                $select.html( opts );
+            } )
+            .fail( function() {
+                // Try as taxonomy slug
+                $.get( '/wp-json/wp/v2/' + taxonomy + 's?per_page=100&_fields=id,name' )
                     .done( function( terms ) {
                         var opts = '<option value="">-- اختر القسم --</option>';
-                        $.each( terms, function( i, t ) {
-                            opts += '<option value="' + t.id + '">' + escHtml( t.name ) + '</option>';
-                        } );
+                        $.each( terms, function( i, t ) { opts += '<option value="' + t.id + '">' + escHtml( t.name ) + '</option>'; } );
                         $select.html( opts );
                     } )
                     .fail( function() { $select.html( '<option value="">تعذر التحميل</option>' ); } );
             } );
     }
 
-    // Post search autocomplete
     var postSearchTimeout;
     $( document ).on( 'input', '#kayan-cc-post-search', function() {
         var query = $( this ).val();
         clearTimeout( postSearchTimeout );
         if ( query.length < 2 ) { $( '#kayan-cc-post-search-results' ).empty(); return; }
         postSearchTimeout = setTimeout( function() {
-            $.get( window.location.origin + '/wp-json/wp/v2/posts?search=' + encodeURIComponent( query ) + '&per_page=10&_fields=id,title' )
+            $.get( '/wp-json/wp/v2/posts?search=' + encodeURIComponent( query ) + '&per_page=10&_fields=id,title' )
                 .done( function( posts ) {
                     var html = posts.map( function( p ) {
                         return '<div class="kcc-ac-item" data-id="' + p.id + '">' + escHtml( p.title.rendered ) + '</div>';
@@ -363,14 +619,11 @@
         $( '#kayan-cc-post-search-results' ).empty();
     } );
 
-    // Submit assign form
     $( document ).on( 'submit', '#kayan-cc-assign-form', function( e ) {
         e.preventDefault();
-        var formData = $( this ).serializeArray();
         var data = {};
-        $.each( formData, function( i, f ) { data[ f.name ] = f.value; } );
+        $( this ).serializeArray().forEach( function( f ) { data[ f.name ] = f.value; } );
         var scopeType = data.scope_type;
-
         if ( scopeType === 'taxonomy_term' ) {
             data.scope_id       = $( '#kayan-cc-assign-term' ).val();
             data.scope_taxonomy = $( '#kayan-cc-assign-taxonomy' ).val();
@@ -380,7 +633,6 @@
         } else if ( scopeType === 'post' ) {
             data.scope_id = $( '#kayan-cc-assign-post-id' ).val();
         }
-
         ajax( 'kayan_cc_assign_number', data )
             .done( function( res ) {
                 if ( res.success ) { toast( 'تم تعيين الرقم بنجاح.' ); loadAssignments(); }
@@ -402,21 +654,19 @@
             $( '#kayan-cc-assignments-list' ).html( '<p class="kayan-cc-empty">لا توجد تعيينات حتى الآن.</p>' );
             return;
         }
-        var html = '<table class="kayan-cc-table"><thead><tr><th>الرقم</th><th>النطاق</th><th>التفاصيل</th><th>حذف</th></tr></thead><tbody>';
+        var html = '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr><th>الرقم</th><th>النطاق</th><th>التفاصيل</th><th>حذف</th></tr></thead><tbody>';
         $.each( rows, function( i, r ) {
-            html += '<tr>' +
-                '<td><strong>' + escHtml( r.name ) + '</strong><br><small>' + escHtml( r.phone_number ) + '</small></td>' +
+            html += '<tr><td><strong>' + escHtml( r.name ) + '</strong><br><small>' + escHtml( r.phone_number ) + '</small></td>' +
                 '<td>' + escHtml( r.scope_type ) + '</td>' +
                 '<td>' + escHtml( r.scope_id > 0 ? '#' + r.scope_id : r.scope_taxonomy || 'الموقع' ) + '</td>' +
-                '<td><button class="button button-small kayan-cc-remove-assignment" data-id="' + r.id + '">حذف</button></td>' +
-                '</tr>';
+                '<td><button class="button button-small kayan-cc-remove-assignment" data-id="' + r.id + '">حذف</button></td></tr>';
         } );
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         $( '#kayan-cc-assignments-list' ).html( html );
     }
 
     $( document ).on( 'click', '.kayan-cc-remove-assignment', function() {
-        if ( ! confirm( CC.i18n.confirm_delete ) ) return;
+        if ( ! window.confirm( CC.i18n.confirm_delete ) ) return;
         var id = $( this ).data( 'id' );
         ajax( 'kayan_cc_remove_assignment', { assignment_id: id } )
             .done( function( res ) {
@@ -439,28 +689,20 @@
         var old_number = $( '#kayan-cc-old-number' ).val().trim();
         var new_number = $( '#kayan-cc-new-number' ).val().trim();
         if ( ! old_number || ! new_number ) { toast( 'يرجى إدخال الرقم القديم والجديد.', 'warning' ); return; }
-
-        var data = {
-            old_number: old_number,
-            new_number: new_number,
+        $( this ).prop( 'disabled', true ).text( 'جارٍ المعاينة...' );
+        ajax( 'kayan_cc_replace_preview', {
+            old_number: old_number, new_number: new_number,
             scope_type: $( '#kayan-cc-replace-scope' ).val(),
-            taxonomy:   $( '#kayan-cc-replace-taxonomy' ).val(),
-            term_id:    $( '#kayan-cc-replace-term' ).val(),
+            taxonomy: $( '#kayan-cc-replace-taxonomy' ).val(),
+            term_id:  $( '#kayan-cc-replace-term' ).val(),
             include_children: $( '#kayan-cc-replace-include-children' ).is( ':checked' ) ? 1 : 0,
-        };
-
-        $( '#kayan-cc-replace-preview-btn' ).prop( 'disabled', true ).text( 'جارٍ المعاينة...' );
-
-        ajax( 'kayan_cc_replace_preview', data )
-            .done( function( res ) {
-                $( '#kayan-cc-replace-preview-btn' ).prop( 'disabled', false ).text( '🔍 معاينة قبل التنفيذ' );
-                if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
-                renderReplacePreview( res.data );
-            } )
-            .fail( function() {
-                $( '#kayan-cc-replace-preview-btn' ).prop( 'disabled', false ).text( '🔍 معاينة قبل التنفيذ' );
-                toast( CC.i18n.error, 'error' );
-            } );
+        } ).done( function( res ) {
+            $( '#kayan-cc-replace-preview-btn' ).prop( 'disabled', false ).text( '🔍 معاينة قبل التنفيذ' );
+            if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
+            renderReplacePreview( res.data );
+        } ).fail( function() {
+            $( '#kayan-cc-replace-preview-btn' ).prop( 'disabled', false ).text( '🔍 معاينة قبل التنفيذ' );
+        } );
     } );
 
     function renderReplacePreview( data ) {
@@ -470,90 +712,77 @@
             '<strong>المقالات المتأثرة:</strong> ' + data.affected_posts + ' &nbsp; ' +
             '<strong>مجموع الظهورات:</strong> ' + data.total_matches
         );
-
         if ( ! data.items.length ) {
             $( '#kayan-cc-replace-preview-table' ).html( '<p class="kayan-cc-empty">لم يُعثر على الرقم في النطاق المحدد.</p>' );
         } else {
             var rows = data.items.map( function( item ) {
                 var locs = item.matches.map( function( m ) { return escHtml( m.location ) + ' (' + m.count + ')'; } ).join( ', ' );
-                return '<tr>' +
-                    '<td><a href="' + escHtml( item.edit_url ) + '" target="_blank">' + escHtml( item.post_title ) + '</a> <small>#' + item.post_id + '</small></td>' +
-                    '<td>' + locs + '</td>' +
-                    '</tr>';
+                return '<tr><td><a href="' + escHtml( item.edit_url ) + '" target="_blank">' + escHtml( item.post_title ) + '</a> <small>#' + item.post_id + '</small></td><td>' + locs + '</td></tr>';
             } ).join( '' );
             $( '#kayan-cc-replace-preview-table' ).html(
-                '<table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>أماكن الظهور</th></tr></thead><tbody>' + rows + '</tbody></table>'
+                '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>أماكن الظهور</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
             );
         }
-
         $( '#kayan-cc-replace-preview-wrap' ).show();
         $( '#kayan-cc-replace-result' ).hide();
-
-        // store data for execute
         $( '#kayan-cc-replace-execute-btn' ).data( 'preview', data );
     }
 
     $( document ).on( 'click', '#kayan-cc-replace-execute-btn', function() {
-        if ( ! confirm( CC.i18n.confirm_replace ) ) return;
-
-        var data = {
+        if ( ! window.confirm( CC.i18n.confirm_replace ) ) return;
+        $( this ).prop( 'disabled', true ).text( 'جارٍ التنفيذ...' );
+        ajax( 'kayan_cc_replace_execute', {
             old_number: $( '#kayan-cc-old-number' ).val().trim(),
             new_number: $( '#kayan-cc-new-number' ).val().trim(),
             scope_type: $( '#kayan-cc-replace-scope' ).val(),
             taxonomy:   $( '#kayan-cc-replace-taxonomy' ).val(),
             term_id:    $( '#kayan-cc-replace-term' ).val(),
             include_children: $( '#kayan-cc-replace-include-children' ).is( ':checked' ) ? 1 : 0,
-        };
-
-        $( this ).prop( 'disabled', true ).text( 'جارٍ التنفيذ...' );
-
-        ajax( 'kayan_cc_replace_execute', data )
-            .done( function( res ) {
-                $( '#kayan-cc-replace-execute-btn' ).prop( 'disabled', false ).text( '⚠ تنفيذ الاستبدال' );
-                if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
-                $( '#kayan-cc-replace-result-text' ).text( ' تم تغيير ' + res.data.posts_changed + ' مقالة. ' );
-                $( '#kayan-cc-replace-result' ).show();
-                $( '#kayan-cc-replace-preview-wrap' ).hide();
-                toast( 'تم تنفيذ الاستبدال بنجاح.' );
-            } )
-            .fail( function() {
-                $( '#kayan-cc-replace-execute-btn' ).prop( 'disabled', false ).text( '⚠ تنفيذ الاستبدال' );
-                toast( CC.i18n.error, 'error' );
-            } );
+        } ).done( function( res ) {
+            $( '#kayan-cc-replace-execute-btn' ).prop( 'disabled', false ).text( '⚠ تنفيذ الاستبدال' );
+            if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
+            $( '#kayan-cc-replace-result-text' ).text( ' تم تغيير ' + res.data.posts_changed + ' مقالة. ' );
+            $( '#kayan-cc-replace-result' ).show();
+            $( '#kayan-cc-replace-preview-wrap' ).hide();
+            toast( 'تم تنفيذ الاستبدال بنجاح.' );
+        } ).fail( function() {
+            $( '#kayan-cc-replace-execute-btn' ).prop( 'disabled', false ).text( '⚠ تنفيذ الاستبدال' );
+        } );
     } );
 
     /* ════════════════════════════════════════════════════════════
        SEO MANAGER
     ════════════════════════════════════════════════════════════ */
-    var seoPage = 1;
+    var seoPage    = 1;
+    var seoPerPage = 20;
 
     function loadSeoPosts() {
         if ( ! $( '#kayan-cc-seo-posts-table' ).length ) return;
-        var args = {
+        ajaxGet( 'kayan_cc_get_seo_posts', {
             page:      seoPage,
+            per_page:  seoPerPage,
             search:    $( '#kayan-cc-seo-search' ).val(),
             post_type: $( '#kayan-cc-seo-post-type' ).val(),
-        };
-        ajaxGet( 'kayan_cc_get_seo_posts', args )
-            .done( function( res ) {
-                if ( ! res.success ) return;
-                renderSeoTable( res.data );
-            } );
+        } ).done( function( res ) {
+            if ( ! res.success ) return;
+            renderSeoTable( res.data );
+        } );
     }
 
     function renderSeoTable( data ) {
         if ( ! data.posts.length ) {
             $( '#kayan-cc-seo-posts-table' ).html( '<p class="kayan-cc-empty">لا توجد مقالات.</p>' );
+            $( '#kayan-cc-seo-pagination' ).empty();
             return;
         }
         var rows = data.posts.map( function( p ) {
-            var seoDisplay = p.seo_title ? escHtml( p.seo_title ) : '<em style="color:#999">غير محدد</em>';
+            var seoDisplay = p.seo_title ? escHtml( p.seo_title ) : '<em style="color:#999">غير محدد (سيستخدم Rank Math الافتراضي)</em>';
             return '<tr data-post-id="' + p.post_id + '">' +
                 '<td><input type="checkbox" class="kayan-cc-seo-select-post" value="' + p.post_id + '"></td>' +
                 '<td><a href="' + escHtml( p.edit_url ) + '" target="_blank">' + escHtml( p.title ) + '</a></td>' +
                 '<td><div class="kayan-cc-seo-title-cell">' +
                     '<span class="kayan-cc-seo-title-display">' + seoDisplay + '</span>' +
-                    '<input type="text" class="kayan-cc-seo-title-input kayan-cc-input" value="' + escHtml( p.seo_title || '' ) + '" style="display:none">' +
+                    '<input type="text" class="kayan-cc-seo-title-input kayan-cc-input" value="' + escAttr( p.seo_title || '' ) + '" style="display:none">' +
                 '</div></td>' +
                 '<td><small>' + escHtml( p.post_type ) + '</small></td>' +
                 '<td class="kayan-cc-actions">' +
@@ -566,30 +795,37 @@
         } ).join( '' );
 
         $( '#kayan-cc-seo-posts-table' ).html(
-            '<table class="kayan-cc-table kayan-cc-table--seo">' +
-            '<thead><tr><th><input type="checkbox" id="kayan-cc-seo-select-all"></th>' +
-            '<th>عنوان المقالة</th><th>عنوان SEO</th><th>النوع</th><th>الإجراءات</th></tr></thead>' +
-            '<tbody>' + rows + '</tbody></table>'
+            '<table class="kayan-cc-table kayan-cc-table--seo kayan-cc-table--responsive">' +
+            '<thead><tr>' +
+            '<th><input type="checkbox" id="kayan-cc-seo-select-all"></th>' +
+            '<th>عنوان المقالة</th><th>عنوان SEO (Rank Math)</th><th>النوع</th><th>الإجراءات</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>'
         );
 
-        renderPagination( $( '#kayan-cc-seo-pagination' ), { total: data.total, per_page: 20, current_page: seoPage, total_pages: data.total_pages }, function( p ) { seoPage = p; loadSeoPosts(); } );
+        renderPagination(
+            $( '#kayan-cc-seo-pagination' ),
+            { total: data.total, per_page: seoPerPage, current_page: seoPage, total_pages: data.total_pages },
+            function( p ) { seoPage = p; loadSeoPosts(); }
+        );
         updateBulkBtnState();
     }
 
-    // Select all
+    $( document ).on( 'change', '#kayan-cc-seo-per-page', function() {
+        seoPerPage = parseInt( $( this ).val(), 10 );
+        seoPage    = 1;
+        loadSeoPosts();
+    } );
+
     $( document ).on( 'change', '#kayan-cc-seo-select-all', function() {
         $( '.kayan-cc-seo-select-post' ).prop( 'checked', $( this ).is( ':checked' ) );
         updateBulkBtnState();
     } );
-
     $( document ).on( 'change', '.kayan-cc-seo-select-post', updateBulkBtnState );
 
     function updateBulkBtnState() {
-        var any = $( '.kayan-cc-seo-select-post:checked' ).length > 0;
-        $( '#kayan-cc-seo-bulk-apply' ).prop( 'disabled', ! any );
+        $( '#kayan-cc-seo-bulk-apply' ).prop( 'disabled', ! $( '.kayan-cc-seo-select-post:checked' ).length );
     }
 
-    // Inline edit
     $( document ).on( 'click', '.kayan-cc-seo-edit-btn', function() {
         var $row = $( this ).closest( 'tr' );
         $row.find( '.kayan-cc-seo-title-display' ).hide();
@@ -600,8 +836,7 @@
 
     $( document ).on( 'click', '.kayan-cc-seo-save-btn', function() {
         var id    = $( this ).data( 'id' );
-        var $row  = $( this ).closest( 'tr' );
-        var title = $row.find( '.kayan-cc-seo-title-input' ).val();
+        var title = $( this ).closest( 'tr' ).find( '.kayan-cc-seo-title-input' ).val();
         ajax( 'kayan_cc_set_seo_title', { post_id: id, seo_title: title } )
             .done( function( res ) {
                 if ( res.success ) { toast( CC.i18n.saved ); loadSeoPosts(); }
@@ -610,9 +845,8 @@
     } );
 
     $( document ).on( 'click', '.kayan-cc-seo-rollback-btn', function() {
-        if ( ! confirm( 'هل تريد التراجع إلى العنوان السابق؟' ) ) return;
-        var id = $( this ).data( 'id' );
-        ajax( 'kayan_cc_rollback_seo_title', { post_id: id } )
+        if ( ! window.confirm( 'هل تريد التراجع إلى العنوان السابق؟' ) ) return;
+        ajax( 'kayan_cc_rollback_seo_title', { post_id: $( this ).data( 'id' ) } )
             .done( function( res ) {
                 if ( res.success ) { toast( 'تم التراجع.', 'success' ); loadSeoPosts(); }
                 else { toast( res.data.message, 'error' ); }
@@ -620,22 +854,18 @@
     } );
 
     $( document ).on( 'click', '.kayan-cc-seo-clear-btn', function() {
-        if ( ! confirm( 'هل تريد مسح عنوان SEO المخصص والعودة للعنوان الافتراضي؟' ) ) return;
-        var id = $( this ).data( 'id' );
-        ajax( 'kayan_cc_clear_seo_title', { post_id: id } )
+        if ( ! window.confirm( 'هل تريد مسح عنوان SEO المخصص والعودة للعنوان الافتراضي لـ Rank Math؟' ) ) return;
+        ajax( 'kayan_cc_clear_seo_title', { post_id: $( this ).data( 'id' ) } )
             .done( function( res ) {
                 if ( res.success ) { toast( 'تم المسح.', 'success' ); loadSeoPosts(); }
                 else { toast( res.data.message, 'error' ); }
             } );
     } );
 
-    // Bulk apply SEO
     $( document ).on( 'click', '#kayan-cc-seo-bulk-apply', function() {
         var ids      = $( '.kayan-cc-seo-select-post:checked' ).map( function() { return $( this ).val(); } ).get();
         var template = $( '#kayan-cc-seo-bulk-template' ).val();
         if ( ! template ) { toast( 'أدخل قالب العنوان أولاً.', 'warning' ); return; }
-        if ( ! ids.length ) { toast( 'اختر مقالة واحدة على الأقل.', 'warning' ); return; }
-
         ajax( 'kayan_cc_seo_bulk_preview', { post_ids: ids, template: template } )
             .done( function( res ) {
                 if ( ! res.success ) { toast( res.data.message, 'error' ); return; }
@@ -646,30 +876,22 @@
     function renderSeoBulkPreview( previews, ids, template ) {
         var rows = previews.map( function( p ) {
             var warnings = p.warnings.length ? '<br><small style="color:#e67e22">⚠ ' + p.warnings.join( ' | ' ) + '</small>' : '';
-            return '<tr><td>' + escHtml( p.post_title ) + '</td>' +
-                '<td>' + escHtml( p.current_seo || '' ) + '</td>' +
-                '<td>' + escHtml( p.new_seo ) + warnings + '</td></tr>';
+            return '<tr><td>' + escHtml( p.post_title ) + '</td><td>' + escHtml( p.current_seo || '' ) + '</td><td>' + escHtml( p.new_seo ) + warnings + '</td></tr>';
         } ).join( '' );
-
         $( '#kayan-cc-seo-bulk-preview-table' ).html(
-            '<table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>العنوان الحالي</th><th>العنوان الجديد</th></tr></thead><tbody>' + rows + '</tbody></table>'
+            '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>الحالي</th><th>الجديد</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
         );
         $( '#kayan-cc-seo-bulk-preview-wrap' ).show().data( { ids: ids, template: template } );
         $( '#kayan-cc-seo-bulk-confirm' ).prop( 'disabled', false );
     }
 
     $( document ).on( 'click', '#kayan-cc-seo-bulk-confirm', function() {
-        if ( ! confirm( CC.i18n.confirm_bulk_seo ) ) return;
-        var $wrap = $( '#kayan-cc-seo-bulk-preview-wrap' );
-        var ids   = $wrap.data( 'ids' );
-        var tpl   = $wrap.data( 'template' );
-        ajax( 'kayan_cc_seo_bulk_apply', { post_ids: ids, template: tpl } )
+        if ( ! window.confirm( CC.i18n.confirm_bulk_seo ) ) return;
+        var $w = $( '#kayan-cc-seo-bulk-preview-wrap' );
+        ajax( 'kayan_cc_seo_bulk_apply', { post_ids: $w.data( 'ids' ), template: $w.data( 'template' ) } )
             .done( function( res ) {
-                if ( res.success ) {
-                    toast( 'تم التطبيق: ' + res.data.success + ' مقالة.' );
-                    $wrap.hide();
-                    loadSeoPosts();
-                } else { toast( res.data.message, 'error' ); }
+                if ( res.success ) { toast( 'تم التطبيق: ' + res.data.success + ' مقالة.' ); $w.hide(); loadSeoPosts(); }
+                else { toast( res.data.message, 'error' ); }
             } );
     } );
 
@@ -684,30 +906,23 @@
     function loadTemplates() {
         if ( ! $( '#kayan-cc-templates-list' ).length ) return;
         ajaxGet( 'kayan_cc_get_seo_templates', {} )
-            .done( function( res ) {
-                if ( ! res.success ) return;
-                renderTemplates( res.data );
-            } );
+            .done( function( res ) { if ( res.success ) renderTemplates( res.data ); } );
     }
 
     function renderTemplates( templates ) {
-        if ( ! templates.length ) {
-            $( '#kayan-cc-templates-list' ).html( '<p class="kayan-cc-empty">لا توجد قوالب محفوظة.</p>' );
-            return;
-        }
+        if ( ! templates.length ) { $( '#kayan-cc-templates-list' ).html( '<p class="kayan-cc-empty">لا توجد قوالب محفوظة.</p>' ); return; }
         var rows = templates.map( function( t ) {
-            return '<tr>' +
-                '<td><strong>' + escHtml( t.name ) + '</strong></td>' +
+            return '<tr><td><strong>' + escHtml( t.name ) + '</strong></td>' +
                 '<td class="kayan-cc-monospace">' + escHtml( t.template ) + '</td>' +
                 '<td>' + escHtml( t.scope_type ) + '</td>' +
                 '<td class="kayan-cc-actions">' +
                     '<button class="button button-small kayan-cc-edit-template" data-id="' + t.id + '">تعديل</button> ' +
-                    '<button class="button button-small kayan-cc-apply-template" data-id="' + t.id + '" data-name="' + escHtml( t.name ) + '">تطبيق</button> ' +
+                    '<button class="button button-small kayan-cc-apply-template" data-id="' + t.id + '" data-name="' + escAttr( t.name ) + '">تطبيق</button> ' +
                     '<button class="button button-small button-link-delete kayan-cc-delete-template" data-id="' + t.id + '">حذف</button>' +
                 '</td></tr>';
         } ).join( '' );
         $( '#kayan-cc-templates-list' ).html(
-            '<table class="kayan-cc-table"><thead><tr><th>الاسم</th><th>القالب</th><th>النطاق</th><th>الإجراءات</th></tr></thead><tbody>' + rows + '</tbody></table>'
+            '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr><th>الاسم</th><th>القالب</th><th>النطاق</th><th>الإجراءات</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
         );
     }
 
@@ -720,10 +935,9 @@
 
     $( document ).on( 'click', '.kayan-cc-insert-var', function() {
         var $input = $( '#kayan-cc-template-text' );
-        var pos    = $input[ 0 ].selectionStart;
-        var val    = $input.val();
-        $input.val( val.slice( 0, pos ) + $( this ).data( 'var' ) + val.slice( pos ) );
-        $input.focus();
+        var pos = $input[ 0 ].selectionStart;
+        var val = $input.val();
+        $input.val( val.slice( 0, pos ) + $( this ).data( 'var' ) + val.slice( pos ) ).focus();
     } );
 
     $( document ).on( 'change', '#kayan-cc-template-scope-type', function() {
@@ -732,16 +946,13 @@
         $( '#kayan-cc-template-scope-term' ).toggle( val === 'taxonomy_term' );
     } );
 
-    $( document ).on( 'change', '#kayan-cc-template-taxonomy', function() {
-        loadTermsFor( $( this ).val(), $( '#kayan-cc-template-term' ) );
-    } );
+    $( document ).on( 'change', '#kayan-cc-template-taxonomy', function() { loadTermsFor( $( this ).val(), $( '#kayan-cc-template-term' ) ); } );
 
     $( document ).on( 'click', '#kayan-cc-save-template', function() {
         var id   = $( '#kayan-cc-template-id' ).val();
         var data = {};
         $( '#kayan-cc-template-form' ).serializeArray().forEach( function( f ) { data[ f.name ] = f.value; } );
-        var action = id ? 'kayan_cc_update_seo_template' : 'kayan_cc_add_seo_template';
-        ajax( action, data )
+        ajax( id ? 'kayan_cc_update_seo_template' : 'kayan_cc_add_seo_template', data )
             .done( function( res ) {
                 if ( res.success ) { toast( CC.i18n.saved ); $( '#kayan-cc-template-modal' ).hide(); loadTemplates(); }
                 else { toast( res.data.message, 'error' ); }
@@ -749,24 +960,18 @@
     } );
 
     $( document ).on( 'click', '.kayan-cc-delete-template', function() {
-        if ( ! confirm( CC.i18n.confirm_delete ) ) return;
-        var id = $( this ).data( 'id' );
-        ajax( 'kayan_cc_delete_seo_template', { id: id } )
-            .done( function( res ) {
-                if ( res.success ) { toast( CC.i18n.deleted ); loadTemplates(); }
-            } );
+        if ( ! window.confirm( CC.i18n.confirm_delete ) ) return;
+        ajax( 'kayan_cc_delete_seo_template', { id: $( this ).data( 'id' ) } )
+            .done( function( res ) { if ( res.success ) { toast( CC.i18n.deleted ); loadTemplates(); } } );
     } );
 
     $( document ).on( 'click', '.kayan-cc-apply-template', function() {
-        var id   = $( this ).data( 'id' );
-        var name = $( this ).data( 'name' );
+        var id = $( this ).data( 'id' );
         $( '#kayan-cc-apply-template-id' ).val( id );
-        $( '#kayan-cc-apply-template-name' ).text( name );
+        $( '#kayan-cc-apply-template-name' ).text( $( this ).data( 'name' ) );
         $( '#kayan-cc-apply-template-preview' ).html( '<p class="kayan-cc-loading">جارٍ التحميل...</p>' );
         $( '#kayan-cc-apply-template-confirm' ).prop( 'disabled', true );
         $( '#kayan-cc-apply-template-modal' ).show();
-
-        // Get all post IDs for this template scope
         ajax( 'kayan_cc_apply_template_preview', { template_id: id, post_ids: [] } )
             .done( function( res ) {
                 if ( ! res.success ) { $( '#kayan-cc-apply-template-preview' ).html( '<p>' + res.data.message + '</p>' ); return; }
@@ -776,28 +981,19 @@
     } );
 
     function renderApplyTemplatePreview( previews ) {
-        if ( ! previews.length ) {
-            $( '#kayan-cc-apply-template-preview' ).html( '<p class="kayan-cc-empty">لا توجد مقالات في نطاق هذا القالب.</p>' );
-            return;
-        }
-        var rows = previews.map( function( p ) {
-            return '<tr><td>' + escHtml( p.post_title ) + '</td><td>' + escHtml( p.new_seo ) + '</td></tr>';
-        } ).join( '' );
+        if ( ! previews.length ) { $( '#kayan-cc-apply-template-preview' ).html( '<p class="kayan-cc-empty">لا توجد مقالات في نطاق هذا القالب.</p>' ); return; }
+        var rows = previews.map( function( p ) { return '<tr><td>' + escHtml( p.post_title ) + '</td><td>' + escHtml( p.new_seo ) + '</td></tr>'; } ).join( '' );
         $( '#kayan-cc-apply-template-preview' ).html(
-            '<table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>العنوان الجديد</th></tr></thead><tbody>' + rows + '</tbody></table>'
+            '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table"><thead><tr><th>المقالة</th><th>العنوان الجديد</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
         );
     }
 
     $( document ).on( 'click', '#kayan-cc-apply-template-confirm', function() {
-        if ( ! confirm( CC.i18n.confirm_bulk_seo ) ) return;
-        var template_id = $( '#kayan-cc-apply-template-id' ).val();
-        var post_ids    = $( this ).data( 'post-ids' ) || [];
-        ajax( 'kayan_cc_apply_template_execute', { template_id: template_id, post_ids: post_ids } )
+        if ( ! window.confirm( CC.i18n.confirm_bulk_seo ) ) return;
+        ajax( 'kayan_cc_apply_template_execute', { template_id: $( '#kayan-cc-apply-template-id' ).val(), post_ids: $( this ).data( 'post-ids' ) || [] } )
             .done( function( res ) {
-                if ( res.success ) {
-                    toast( 'تم التطبيق: ' + res.data.success + ' مقالة.' );
-                    $( '#kayan-cc-apply-template-modal' ).hide();
-                } else { toast( res.data.message, 'error' ); }
+                if ( res.success ) { toast( 'تم التطبيق: ' + res.data.success + ' مقالة.' ); $( '#kayan-cc-apply-template-modal' ).hide(); }
+                else { toast( res.data.message, 'error' ); }
             } );
     } );
 
@@ -819,10 +1015,7 @@
     }
 
     function renderLogTable( data ) {
-        if ( ! data.rows.length ) {
-            $( '#kayan-cc-log-table' ).html( '<p class="kayan-cc-empty">لا توجد سجلات.</p>' );
-            return;
-        }
+        if ( ! data.rows.length ) { $( '#kayan-cc-log-table' ).html( '<p class="kayan-cc-empty">لا توجد سجلات.</p>' ); return; }
         var rows = data.rows.map( function( r ) {
             var rollbackBtn = '';
             if ( r.is_reversible == 1 && ! parseInt( r.reverted_by ) ) {
@@ -830,37 +1023,30 @@
             } else if ( parseInt( r.reverted_by ) ) {
                 rollbackBtn = '<span class="kayan-cc-badge kayan-cc-badge--reverted">تم التراجع</span>';
             }
-            var beforeBtn = r.data_before ? '<button class="button button-small kayan-cc-view-data" data-content="' + escAttr( r.data_before ) + '">عرض</button>' : '-';
-            var afterBtn  = r.data_after  ? '<button class="button button-small kayan-cc-view-data" data-content="' + escAttr( r.data_after ) + '">عرض</button>'  : '-';
             return '<tr>' +
                 '<td>' + r.id + '</td>' +
                 '<td><span class="kayan-cc-badge kayan-cc-badge--action">' + escHtml( r.action_label ) + '</span></td>' +
                 '<td>' + escHtml( r.object_type ) + '</td>' +
                 '<td>' + escHtml( r.user_display ) + '</td>' +
-                '<td>' + beforeBtn + '</td>' +
-                '<td>' + afterBtn + '</td>' +
+                '<td>' + ( r.data_before ? '<button class="button button-small kayan-cc-view-data" data-content="' + escAttr( r.data_before ) + '">عرض</button>' : '-' ) + '</td>' +
+                '<td>' + ( r.data_after  ? '<button class="button button-small kayan-cc-view-data" data-content="' + escAttr( r.data_after  ) + '">عرض</button>' : '-' ) + '</td>' +
                 '<td><small>' + escHtml( r.created_at ) + '</small></td>' +
                 '<td>' + rollbackBtn + '</td>' +
                 '</tr>';
         } ).join( '' );
-
         $( '#kayan-cc-log-table' ).html(
-            '<table class="kayan-cc-table"><thead><tr>' +
+            '<div class="kayan-cc-table-scroll-wrap"><table class="kayan-cc-table kayan-cc-table--log"><thead><tr>' +
             '<th>#</th><th>العملية</th><th>النوع</th><th>المستخدم</th><th>قبل</th><th>بعد</th><th>التاريخ</th><th>التراجع</th>' +
-            '</tr></thead><tbody>' + rows + '</tbody></table>'
+            '</tr></thead><tbody>' + rows + '</tbody></table></div>'
         );
         renderPagination( $( '#kayan-cc-log-pagination' ), data.paging, function( p ) { logPage = p; loadActivityLog(); } );
     }
 
-    $( document ).on( 'change', '#kayan-cc-log-action-filter, #kayan-cc-log-type-filter', function() {
-        logPage = 1; loadActivityLog();
-    } );
+    $( document ).on( 'change', '#kayan-cc-log-action-filter, #kayan-cc-log-type-filter', function() { logPage = 1; loadActivityLog(); } );
 
     $( document ).on( 'click', '.kayan-cc-rollback-btn', function() {
-        var id   = $( this ).data( 'id' );
-        var type = $( this ).data( 'type' );
-        $( '#kayan-cc-rollback-log-id' ).val( id );
-        $( '#kayan-cc-rollback-type' ).val( type );
+        $( '#kayan-cc-rollback-log-id' ).val( $( this ).data( 'id' ) );
+        $( '#kayan-cc-rollback-type' ).val( $( this ).data( 'type' ) );
         $( '#kayan-cc-rollback-modal' ).show();
     } );
 
@@ -868,13 +1054,7 @@
         var id   = $( '#kayan-cc-rollback-log-id' ).val();
         var type = $( '#kayan-cc-rollback-type' ).val();
         var action = type === 'replace_number' ? 'kayan_cc_replace_rollback' : null;
-
-        if ( ! action ) {
-            toast( 'هذا النوع من التراجع غير مدعوم حتى الآن.', 'warning' );
-            $( '#kayan-cc-rollback-modal' ).hide();
-            return;
-        }
-
+        if ( ! action ) { toast( 'هذا النوع من التراجع غير مدعوم حتى الآن.', 'warning' ); $( '#kayan-cc-rollback-modal' ).hide(); return; }
         ajax( action, { log_id: id } )
             .done( function( res ) {
                 $( '#kayan-cc-rollback-modal' ).hide();
@@ -886,23 +1066,9 @@
     $( document ).on( 'click', '.kayan-cc-view-data', function() {
         var raw = $( this ).data( 'content' );
         var pretty = '';
-        try { pretty = JSON.stringify( JSON.parse( raw ), null, 2 ); } catch (e) { pretty = raw; }
+        try { pretty = JSON.stringify( JSON.parse( raw ), null, 2 ); } catch ( e ) { pretty = raw; }
         $( '#kayan-cc-data-content' ).text( pretty );
         $( '#kayan-cc-data-modal' ).show();
-    } );
-
-    /* ════════════════════════════════════════════════════════════
-       SETTINGS
-    ════════════════════════════════════════════════════════════ */
-    $( document ).on( 'click', '#kayan-cc-reinstall-db', function() {
-        var $btn = $( this );
-        $btn.prop( 'disabled', true );
-        ajax( 'kayan_cc_reinstall_db', {} )
-            .done( function( res ) {
-                $btn.prop( 'disabled', false );
-                $( '#kayan-cc-reinstall-db-result' ).text( res.success ? 'تم بنجاح.' : res.data.message );
-            } )
-            .fail( function() { $btn.prop( 'disabled', false ); } );
     } );
 
     /* ════════════════════════════════════════════════════════════
@@ -916,29 +1082,10 @@
         loadTemplates();
         loadActivityLog();
 
-        // If scan was already complete on page load, show results
-        if ( $( '#kayan-cc-scan-results-wrap' ).length && $( '#kayan-cc-scan-results-wrap' ).is( ':visible' ) ) {
-            loadScanResults( 1 );
-        }
+        if ( $( '#kayan-cc-scan-results-wrap' ).is( ':visible' ) ) loadScanResults( 1 );
+
+        // Handle window resize (switch between table and card view)
+        $( window ).on( 'resize', debounce( function() { loadNumbers(); }, 500 ) );
     } );
-
-    /* ── Helpers ──────────────────────────────────────────────── */
-
-    function escHtml( str ) {
-        return String( str ).replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ).replace( />/g, '&gt;' ).replace( /"/g, '&quot;' );
-    }
-
-    function escAttr( str ) {
-        return String( str ).replace( /"/g, '&quot;' ).replace( /'/g, '&#039;' );
-    }
-
-    function debounce( fn, delay ) {
-        var t;
-        return function() {
-            var ctx = this, args = arguments;
-            clearTimeout( t );
-            t = setTimeout( function() { fn.apply( ctx, args ); }, delay );
-        };
-    }
 
 } )( jQuery );

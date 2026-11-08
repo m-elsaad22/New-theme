@@ -153,4 +153,101 @@ class KayanCC_Phone_Manager {
             $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE number_id = %d", $number_id )
         );
     }
+
+    /**
+     * Get occurrence stats for a number from the scan results table.
+     * Returns ['total_occurrences' => int, 'unique_posts' => int]
+     */
+    public function get_occurrence_stats( string $phone_e164, string $phone_number = '' ): array {
+        global $wpdb;
+        $table = KayanCC_Database::get_scan_table();
+
+        if ( ! $phone_e164 && ! $phone_number ) return [ 'total_occurrences' => 0, 'unique_posts' => 0 ];
+
+        $where_parts = [];
+        $params      = [];
+
+        if ( $phone_e164 ) {
+            $where_parts[] = 'normalized = %s';
+            $params[]      = $phone_e164;
+        }
+        if ( $phone_number && $phone_number !== $phone_e164 ) {
+            $where_parts[] = 'raw_value LIKE %s';
+            $params[]      = '%' . $wpdb->esc_like( $phone_number ) . '%';
+        }
+
+        $where = implode( ' OR ', $where_parts );
+        $total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE {$where}", $params ) ); // phpcs:ignore
+        $posts = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT source_id) FROM {$table} WHERE ({$where}) AND source_id > 0", $params ) ); // phpcs:ignore
+
+        return [ 'total_occurrences' => $total, 'unique_posts' => $posts ];
+    }
+
+    /**
+     * Hard delete: remove number from the registry AND all post content/meta.
+     */
+    public function hard_delete( int $id ): array|\WP_Error {
+        $number = $this->get( $id );
+        if ( ! $number ) return new \WP_Error( 'not_found', 'الرقم غير موجود.' );
+
+        $replacer = new KayanCC_Phone_Replacement();
+        $results  = [];
+
+        if ( $number['phone_number'] ) {
+            $r = $replacer->execute( $number['phone_number'], '', [ 'type' => 'all' ] );
+            if ( ! is_wp_error( $r ) ) $results['phone'] = $r;
+        }
+
+        if ( $number['whatsapp_number'] && $number['whatsapp_number'] !== $number['phone_number'] ) {
+            $r = $replacer->execute( $number['whatsapp_number'], '', [ 'type' => 'all' ] );
+            if ( ! is_wp_error( $r ) ) $results['whatsapp'] = $r;
+        }
+
+        $this->delete( $id );
+        KayanCC_Activity_Log::record( 'hard_delete_number', 'number', $id, $number, [ 'replacement_results' => $results ] );
+
+        return [ 'success' => true, 'number' => $number, 'replacement_results' => $results ];
+    }
+
+    /**
+     * Delete a number occurrence from a specific post content or meta field.
+     */
+    public function delete_from_location( string $phone_e164, string $source_type, int $source_id, string $source_field ): bool|\WP_Error {
+        if ( ! $source_id ) return new \WP_Error( 'invalid_source', 'معرف المصدر غير صحيح.' );
+
+        $variants = array_filter( [ $phone_e164, $this->e164_to_local( $phone_e164 ) ] );
+
+        if ( in_array( $source_type, [ 'post_content', 'post_title' ], true ) ) {
+            $post        = get_post( $source_id );
+            $new_content = $post->post_content;
+            foreach ( $variants as $v ) {
+                $new_content = preg_replace( '/(?<![0-9])' . preg_quote( $v, '/' ) . '(?![0-9])/u', '', $new_content ) ?? $new_content;
+            }
+            wp_update_post( [ 'ID' => $source_id, 'post_content' => $new_content ] );
+            KayanCC_Activity_Log::record( 'delete_from_location', 'post', $source_id, [ 'field' => $source_type ], [ 'number' => $phone_e164 ] );
+            return true;
+        }
+
+        if ( $source_type === 'post_meta' ) {
+            $meta_key = str_replace( 'postmeta:', '', $source_field );
+            $meta_val = get_post_meta( $source_id, $meta_key, true );
+            if ( is_string( $meta_val ) ) {
+                foreach ( $variants as $v ) {
+                    $meta_val = preg_replace( '/(?<![0-9])' . preg_quote( $v, '/' ) . '(?![0-9])/u', '', $meta_val ) ?? $meta_val;
+                }
+                update_post_meta( $source_id, $meta_key, $meta_val );
+                KayanCC_Activity_Log::record( 'delete_from_location', 'post_meta', $source_id, [ 'meta_key' => $meta_key ], [ 'number' => $phone_e164 ] );
+            }
+            return true;
+        }
+
+        return new \WP_Error( 'unsupported_source', 'نوع المصدر غير مدعوم للحذف المباشر.' );
+    }
+
+    private function e164_to_local( string $e164 ): string {
+        if ( strpos( $e164, '+971' ) === 0 ) {
+            return '0' . substr( ltrim( $e164, '+' ), 3 );
+        }
+        return '';
+    }
 }
