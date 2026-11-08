@@ -93,7 +93,7 @@ class KayanCC_Ajax_Handler {
 
     public function handle_kayan_cc_get_numbers(): void {
         $this->verify_nonce();
-        $per_page = min( 200, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
+        $per_page = min( 2000, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
         $args = [
             'page'     => (int) ( $_GET['page'] ?? 1 ),
             'per_page' => $per_page,
@@ -315,7 +315,7 @@ class KayanCC_Ajax_Handler {
 
     public function handle_kayan_cc_get_seo_posts(): void {
         $this->verify_nonce();
-        $per_page = min( 200, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
+        $per_page = min( 2000, max( 5, (int) ( $_GET['per_page'] ?? 20 ) ) );
         $args   = [
             'page'      => (int) ( $_GET['page']      ?? 1 ),
             'per_page'  => $per_page,

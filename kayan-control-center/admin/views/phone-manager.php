@@ -15,13 +15,15 @@
     <div class="kayan-cc-toolbar__actions">
         <div class="kayan-cc-per-page">
             <label for="kayan-cc-numbers-per-page">عرض:</label>
-            <select id="kayan-cc-numbers-per-page" class="kayan-cc-input">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-            <span>في الصفحة</span>
+            <input type="number" id="kayan-cc-numbers-per-page" class="kayan-cc-input kayan-cc-per-page__input"
+                   value="20" min="5" max="2000" placeholder="20">
+            <div class="kayan-cc-per-page__presets">
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-numbers-per-page" data-val="10">10</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-numbers-per-page" data-val="20">20</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-numbers-per-page" data-val="50">50</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-numbers-per-page" data-val="100">100</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-numbers-per-page" data-val="500">500</button>
+            </div>
         </div>
         <button id="kayan-cc-export-csv" class="button">⬇ CSV</button>
         <button id="kayan-cc-add-number" class="button button-primary">+ إضافة رقم</button>

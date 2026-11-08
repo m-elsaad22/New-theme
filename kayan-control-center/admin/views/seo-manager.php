@@ -27,13 +27,15 @@
     <div class="kayan-cc-toolbar__actions">
         <div class="kayan-cc-per-page">
             <label for="kayan-cc-seo-per-page">عرض:</label>
-            <select id="kayan-cc-seo-per-page" class="kayan-cc-input">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-            <span>في الصفحة</span>
+            <input type="number" id="kayan-cc-seo-per-page" class="kayan-cc-input kayan-cc-per-page__input"
+                   value="20" min="5" max="2000" placeholder="20">
+            <div class="kayan-cc-per-page__presets">
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-seo-per-page" data-val="10">10</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-seo-per-page" data-val="20">20</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-seo-per-page" data-val="50">50</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-seo-per-page" data-val="100">100</button>
+                <button class="kayan-cc-preset-btn" data-target="kayan-cc-seo-per-page" data-val="500">500</button>
+            </div>
         </div>
         <input type="text" id="kayan-cc-seo-bulk-template" class="kayan-cc-input" placeholder="قالب: {post_title} | {site_name}">
         <button id="kayan-cc-seo-bulk-apply" class="button button-primary" disabled>

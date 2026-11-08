@@ -49,6 +49,15 @@
 
     function isMobile() { return window.innerWidth <= 782; }
 
+    function syncPresetActive( $input ) {
+        var v = parseInt( $input.val(), 10 );
+        $input.closest( '.kayan-cc-per-page' )
+              .find( '.kayan-cc-preset-btn' )
+              .each( function() {
+                  $( this ).toggleClass( 'active', parseInt( $( this ).data( 'val' ), 10 ) === v );
+              } );
+    }
+
     function statusLabel( s ) { return s === 'active' ? 'نشط' : 'متوقف'; }
 
     function resultTypeLabel( type ) {
@@ -64,22 +73,64 @@
     }
 
     function renderPagination( $container, paging, onPageClick ) {
-        if ( ! paging || paging.total_pages <= 1 ) { $container.empty(); return; }
-        var html = '<span style="font-size:12px;color:#7f8c8d;margin-left:8px">' +
-                   paging.total + ' عنصر</span> ';
-        var start = Math.max( 1, paging.current_page - 2 );
-        var end   = Math.min( paging.total_pages, paging.current_page + 2 );
-        if ( start > 1 )              html += '<button class="page-btn" data-page="1">1</button><span>…</span>';
-        for ( var i = start; i <= end; i++ ) {
-            html += '<button class="page-btn' + ( i === paging.current_page ? ' active' : '' ) +
-                    '" data-page="' + i + '">' + i + '</button>';
+        if ( ! paging ) { $container.empty(); return; }
+        var total      = paging.total || 0;
+        var totalPages = paging.total_pages || 1;
+        var cur        = paging.current_page || 1;
+
+        var html = '<div class="kayan-cc-pag-wrap">';
+
+        // Total count
+        html += '<span class="kayan-cc-pag-info">' + total + ' عنصر</span>';
+
+        // Prev button
+        html += '<button class="page-btn page-btn--nav kayan-cc-pag-prev"' +
+                ( cur <= 1 ? ' disabled' : '' ) +
+                ' data-page="' + Math.max( 1, cur - 1 ) + '">&#x2190; السابق</button>';
+
+        if ( totalPages > 1 ) {
+            // Numbered buttons (desktop)
+            var nums = '<span class="kayan-cc-pag-nums">';
+            var start = Math.max( 1, cur - 2 );
+            var end   = Math.min( totalPages, cur + 2 );
+            if ( start > 1 ) nums += '<button class="page-btn" data-page="1">1</button>' +
+                                     ( start > 2 ? '<span class="kayan-cc-pag-ellipsis">…</span>' : '' );
+            for ( var i = start; i <= end; i++ ) {
+                nums += '<button class="page-btn' + ( i === cur ? ' active' : '' ) +
+                        '" data-page="' + i + '">' + i + '</button>';
+            }
+            if ( end < totalPages ) nums += ( end < totalPages - 1 ? '<span class="kayan-cc-pag-ellipsis">…</span>' : '' ) +
+                                            '<button class="page-btn" data-page="' + totalPages + '">' + totalPages + '</button>';
+            nums += '</span>';
+            html += nums;
+
+            // Mobile indicator (shows only on small screens via CSS)
+            html += '<span class="kayan-cc-pag-mobile">' + cur + ' / ' + totalPages + '</span>';
         }
-        if ( end < paging.total_pages ) html += '<span>…</span><button class="page-btn" data-page="' + paging.total_pages + '">' + paging.total_pages + '</button>';
+
+        // Next button
+        html += '<button class="page-btn page-btn--nav kayan-cc-pag-next"' +
+                ( cur >= totalPages ? ' disabled' : '' ) +
+                ' data-page="' + Math.min( totalPages, cur + 1 ) + '">التالي &#x2192;</button>';
+
+        html += '</div>';
         $container.html( html );
-        $container.find( '.page-btn' ).on( 'click', function() {
+        $container.find( '.page-btn:not([disabled])' ).on( 'click', function() {
             onPageClick( parseInt( $( this ).data( 'page' ), 10 ) );
         } );
     }
+
+    /* ── Per-page preset buttons ─────────────────────────────────── */
+    $( document ).on( 'click', '.kayan-cc-preset-btn', function() {
+        var target = $( this ).data( 'target' );
+        var val    = $( this ).data( 'val' );
+        var $input = $( '#' + target );
+        $input.val( val ).trigger( 'change' );
+        // Update active state
+        $( this ).closest( '.kayan-cc-per-page__presets' )
+                 .find( '.kayan-cc-preset-btn' ).removeClass( 'active' );
+        $( this ).addClass( 'active' );
+    } );
 
     /* ── Modals ─────────────────────────────────────────────────── */
     $( document ).on( 'click', '.kayan-cc-modal__overlay, .kayan-cc-modal__close', function() {
@@ -218,9 +269,18 @@
     } );
 
     $( document ).on( 'change', '#kayan-cc-numbers-per-page', function() {
-        numbersPerPage = parseInt( $( this ).val(), 10 );
+        var v = parseInt( $( this ).val(), 10 );
+        if ( isNaN( v ) || v < 5 ) v = 5;
+        if ( v > 2000 ) v = 2000;
+        $( this ).val( v );
+        syncPresetActive( $( this ) );
+        numbersPerPage = v;
         numbersPage    = 1;
         loadNumbers();
+    } );
+
+    $( document ).on( 'keydown', '#kayan-cc-numbers-per-page', function( e ) {
+        if ( e.key === 'Enter' ) { $( this ).trigger( 'change' ); }
     } );
 
     /* ── Add ── */
@@ -811,9 +871,18 @@
     }
 
     $( document ).on( 'change', '#kayan-cc-seo-per-page', function() {
-        seoPerPage = parseInt( $( this ).val(), 10 );
+        var v = parseInt( $( this ).val(), 10 );
+        if ( isNaN( v ) || v < 5 ) v = 5;
+        if ( v > 2000 ) v = 2000;
+        $( this ).val( v );
+        syncPresetActive( $( this ) );
+        seoPerPage = v;
         seoPage    = 1;
         loadSeoPosts();
+    } );
+
+    $( document ).on( 'keydown', '#kayan-cc-seo-per-page', function( e ) {
+        if ( e.key === 'Enter' ) { $( this ).trigger( 'change' ); }
     } );
 
     $( document ).on( 'change', '#kayan-cc-seo-select-all', function() {

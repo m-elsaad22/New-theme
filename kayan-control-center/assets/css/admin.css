@@ -338,29 +338,78 @@
 
 /* ── Pagination ───────────────────────────────────────────────── */
 .kayan-cc-pagination {
+    padding: 12px 0 4px;
+}
+
+.kayan-cc-pag-wrap {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
-    padding: 16px 0;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.kayan-cc-pag-info {
+    font-size: 12px;
+    color: var(--kcc-text-muted);
+    margin-left: 10px;
+    white-space: nowrap;
+}
+
+.kayan-cc-pag-nums {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.kayan-cc-pag-ellipsis {
+    color: var(--kcc-text-muted);
+    padding: 0 2px;
+    font-size: 13px;
 }
 
 .kayan-cc-pagination .page-btn {
-    padding: 6px 12px;
+    padding: 6px 11px;
     border: 1px solid var(--kcc-border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: #fff;
     cursor: pointer;
     font-size: 13px;
+    line-height: 1.4;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
 }
 
 .kayan-cc-pagination .page-btn.active {
     background: var(--kcc-primary);
     color: #fff;
     border-color: var(--kcc-primary);
+    font-weight: 600;
 }
 
-.kayan-cc-pagination .page-btn:hover:not(.active) { background: var(--kcc-bg); }
+.kayan-cc-pagination .page-btn:hover:not(.active):not([disabled]) { background: var(--kcc-bg); }
+
+.kayan-cc-pagination .page-btn[disabled] {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
+.kayan-cc-pagination .page-btn--nav {
+    padding: 6px 14px;
+    font-weight: 600;
+    background: var(--kcc-bg);
+    border-color: var(--kcc-border);
+}
+
+/* Mobile page indicator – hidden on desktop, shown on mobile via media query */
+.kayan-cc-pag-mobile {
+    display: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--kcc-text);
+    padding: 0 6px;
+}
 
 /* ── Progress ─────────────────────────────────────────────────── */
 .kayan-cc-progress { margin: 20px 0; }
@@ -569,11 +618,43 @@
 .kayan-cc-per-page {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 13px;
     color: var(--kcc-text-muted);
+    flex-wrap: wrap;
 }
-.kayan-cc-per-page select { min-width: 70px; padding: 6px 8px; }
+
+.kayan-cc-per-page__input {
+    width: 70px !important;
+    min-width: unset !important;
+    padding: 6px 8px;
+    text-align: center;
+}
+
+.kayan-cc-per-page__presets {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.kayan-cc-preset-btn {
+    padding: 4px 9px;
+    border: 1px solid var(--kcc-border);
+    border-radius: 4px;
+    background: var(--kcc-bg);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--kcc-text-muted);
+    line-height: 1.4;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.kayan-cc-preset-btn:hover,
+.kayan-cc-preset-btn.active {
+    background: var(--kcc-primary);
+    color: #fff;
+    border-color: var(--kcc-primary);
+}
 
 /* ── Number detail / locations modal ─────────────────────────── */
 .kayan-cc-locations-table td { vertical-align: top; }
@@ -745,6 +826,15 @@
 
     /* Per page */
     .kayan-cc-per-page { flex-wrap: wrap; }
+    .kayan-cc-per-page__presets .kayan-cc-preset-btn { padding: 5px 8px; font-size: 12px; }
+
+    /* Pagination – hide numbered pages, show mobile indicator */
+    .kayan-cc-pag-nums  { display: none; }
+    .kayan-cc-pag-mobile { display: inline; }
+    .kayan-cc-pag-info { width: 100%; text-align: center; margin: 0 0 6px; }
+    .kayan-cc-pag-wrap { gap: 8px; }
+    .kayan-cc-pagination .page-btn--nav { padding: 8px 18px; font-size: 14px; }
+    .kayan-cc-pagination .page-btn--nav[disabled] { display: none; }
 
     /* Import banner */
     .kayan-cc-import-banner { flex-direction: column; }
